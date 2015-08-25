@@ -5,11 +5,11 @@ import json
 
 def hash_string(characters):
     """ Get an 8 character BHD5 hash from this string. """
-    hash_value = _get_hash_value(characters)
-    eight_chars_hash = _format_hash(hash_value)
+    hash_value = get_hash_value(characters)
+    eight_chars_hash = format_hash(hash_value)
     return eight_chars_hash
 
-def _get_hash_value(characters):
+def get_hash_value(characters):
     """ Get the full hash value for this string. """
     characters = characters.lower()
     hash_value = 0
@@ -18,9 +18,9 @@ def _get_hash_value(characters):
         hash_value += ord(character)
     return hash_value
 
-def _format_hash(hash_value):
+def format_hash(hash_value):
     """ Format a hash value to a 8 characters BHD5 hash. """
-    string_hash = "{:X}".format(hash_value)
+    string_hash = "{:08X}".format(hash_value)
     four_least_significant_bytes = string_hash[-8:]
     return four_least_significant_bytes
 
