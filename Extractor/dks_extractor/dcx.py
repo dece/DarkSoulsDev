@@ -72,6 +72,7 @@ class CompressedPackage(object):
 
     def uncompress(self, output_file_path):
         uncompressed = zlib.decompress(self.zlib_data)
+        print("Decompressing file at", output_file_path)
         with open(output_file_path, "wb") as output_file:
             output_file.write(uncompressed)
 
