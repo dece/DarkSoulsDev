@@ -19,7 +19,11 @@ def main():
     check_dir(args.data_dir)
     check_dir(args.res_dir)
 
-    full_extraction(args.data_dir, args.output_dir, args.res_dir)
+    data_dir = os.path.abspath(args.data_dir)
+    output_dir = os.path.abspath(args.output_dir)
+    res_dir = os.path.abspath(args.res_dir)
+
+    full_extraction(data_dir, output_dir, res_dir)
 
 def check_dir(directory):
     if not os.path.isdir(directory):
@@ -28,7 +32,7 @@ def check_dir(directory):
 
 def full_extraction(data_dir, output_dir, resources_dir):
     if not os.path.isdir(output_dir):
-        os.makedirs(output_dir, exist_ok = True)
+        os.makedirs(output_dir)
 
     archive_manager = ArchiveManager(resources_dir)
     archive_manager.full_extraction(data_dir, output_dir)
