@@ -2,32 +2,32 @@ import os
 from struct import Struct
 
 
-BND_MAGIC_307C15R17 = \
-        b"\x42\x4E\x44\x33\x30\x37\x43\x31\x35\x52\x31\x37\x70\x00\x00\x00"
-BND_MAGIC_307D7R6   = \
-        b"\x42\x4E\x44\x33\x30\x37\x44\x37\x52\x36\x00\x00\x74\x00\x00\x00"
-BND_MAGIC_307M13L29 = \
-        b"\x42\x4E\x44\x33\x30\x37\x4D\x31\x33\x4C\x32\x39\x74\x00\x00\x00"
-
-BND_MAGICS = [
-    BND_MAGIC_307D7R6,
-    BND_MAGIC_307M13L29,
-    BND_MAGIC_307C15R17
-]
-
-HEADER_BIN = Struct("<16s4I")
-ENTRY_BIN = Struct("<6I")
+HEADER_BIN = Struct("<12s5I")
+ENTRY_BIN_24 = Struct("<6I")
+ENTRY_BIN_20 = Struct("<5I")
 
 
 class StandaloneArchive(object):
     """ BND parser. """
 
+    FLAGS = {
+        "UNK1": 0x1,
+        "UNK2": 0x2,
+        "USE_24_BYTES_STRUCT": 0x4,
+        "UNK4": 0x8,
+        "UNK5": 0x10,
+        "UNK6": 0x20,
+        "UNK7": 0x40,
+        "UNK8": 0x80
+    }
+
     def __init__(self):
         self.magic = 0
+        self.flags = 0
         self.num_entries = 0
         self.data_offset = 0
-        # self.unk1 = 0
         # self.unk2 = 0
+        # self.unk3 = 0
         self.entries = []
         self.dirname = ""
 
@@ -43,20 +43,31 @@ class StandaloneArchive(object):
         data = bnd_file.read(HEADER_BIN.size)
         unpacked = HEADER_BIN.unpack(data)
         self.magic = unpacked[0]
-        self.num_entries = unpacked[1]
-        self.data_offset = unpacked[2]
-        # self.unk1 = unpacked[3]
-        # self.unk2 = unpacked[4]
-        assert self.magic in BND_MAGICS
+        self.flags = unpacked[1]
+        self.num_entries = unpacked[2]
+        self.data_offset = unpacked[3]
+        # self.unk1 = unpacked[4]
+        # self.unk2 = unpacked[5]
 
     def _load_entries(self, bnd_file):
         bnd_file.seek(HEADER_BIN.size)
+        entry_type = self._determine_entry_type()
         offset = bnd_file.tell()
         for _ in range(self.num_entries):
             entry = StandaloneArchiveEntry()
-            entry.load_entry(bnd_file, offset)
+            entry.load_entry(bnd_file, offset, entry_type)
             self.entries.append(entry)
-            offset += ENTRY_BIN.size
+            offset += entry_type.size
+
+    def _determine_entry_type(self):
+        if self.flags not in [0x54, 0x70, 0x74]:
+            error_message = "Unknown BndHeader.infos: {}".format(self.infos)
+            raise NotImplementedError(error_message)
+
+        if self.flags & StandaloneArchive.FLAGS["USE_24_BYTES_STRUCT"]:
+            return ENTRY_BIN_24
+        else:
+            return ENTRY_BIN_20
 
     def extract_all_files(self, output_dir, force_output_dir = False):
         """ Extract all files contained in this archive.
@@ -65,9 +76,6 @@ class StandaloneArchive(object):
         Relative file names are placed relatively to the BND file, except if
         force_output_dir is set to True.
         """
-        if self.magic != BND_MAGIC_307D7R6:
-            print("Not implemented BND format")
-            return
         for file_entry in self.entries:
             if file_entry.has_absolute_file_name() or force_output_dir:
                 target_dir = output_dir
@@ -107,16 +115,17 @@ class StandaloneArchiveEntry(object):
             self.ident, self.data_size, self.data_offset, self.file_name
         )
 
-    def load_entry(self, bnd_file, offset):
+    def load_entry(self, bnd_file, offset, entry_type):
         bnd_file.seek(offset)
-        data = bnd_file.read(ENTRY_BIN.size)
-        unpacked = ENTRY_BIN.unpack(data)
+        data = bnd_file.read(entry_type.size)
+        unpacked = entry_type.unpack(data)
         # self.unk1 = unpacked[0]
         self.data_size = unpacked[1]
         self.data_offset = unpacked[2]
         self.ident = unpacked[3]
         self.name_offset = unpacked[4]
-        # self.unk2 = unpacked[5]
+        # if len(unpacked) > 5:
+        #     self.unk2 = unpacked[5]
         self._load_names(bnd_file)
         self._load_data(bnd_file)
 
@@ -130,7 +139,7 @@ class StandaloneArchiveEntry(object):
                 break
             name_bytes += next_byte
             offset += 1
-        self.file_name = name_bytes.decode(errors = "ignore")
+        self.file_name = name_bytes.decode("shift_jis")
         self._compute_joinable_name()
 
     def _compute_joinable_name(self):
@@ -144,13 +153,15 @@ class StandaloneArchiveEntry(object):
 
     def _load_data(self, bnd_file):
         bnd_file.seek(self.data_offset)
-        print(self.data_size)
         self.file_data = bnd_file.read(self.data_size)
 
     def has_absolute_file_name(self):
-        return self.file_name.startswith("N:")
+        return self.file_name[:2].upper() == "N:"
 
     def extract_entry(self, output_file_path):
+        # if os.path.isfile(output_file_path):  # TEMP, just go quicker
+        #     return
         print("Extracting BND file at", output_file_path)
+        assert not os.path.isfile(output_file_path)
         with open(output_file_path, "wb") as output_file:
             output_file.write(self.file_data)

@@ -3,8 +3,9 @@
 import argparse
 import os
 import sys
+import time
 
-from dks_extractor.archive_manager import ArchiveManager
+from dks_archives.archive_manager import ArchiveManager
 
 DESCRIPTION = "Dark Souls archive parser"
 
@@ -23,7 +24,12 @@ def main():
     output_dir = os.path.abspath(args.output_dir)
     res_dir = os.path.abspath(args.res_dir)
 
+    start_time = time.time()
+
     full_extraction(data_dir, output_dir, res_dir)
+
+    stop_time = time.time()
+    print("Time elapsed:", stop_time - start_time)
 
 def check_dir(directory):
     if not os.path.isdir(directory):

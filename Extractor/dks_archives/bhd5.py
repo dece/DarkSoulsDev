@@ -8,7 +8,7 @@ ENTRY_RECORD_BIN = Struct("<2I")
 DATA_ENTRY_BIN = Struct("<4I")
 
 
-class ComposedArchiveHeader(object):
+class CombinedExternalArchiveHeader(object):
     """ BHD5 parser. Some useless elements commented for performance. """
 
     def __init__(self):

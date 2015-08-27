@@ -28,15 +28,11 @@ MAGICS = {
 }
 
 
-def value_from_magic(magic):
+def file_type_from_magic(magic):
     if magic in MAGICS:
         return MAGICS[magic]
     else:
         return FileType.UNKNOWN
-
-def determine_file_type(data):
-    magic = data[:4]
-    return value_from_magic(magic)
 
 
 DUMMY_EXTENSIONS = {
@@ -52,7 +48,7 @@ DUMMY_EXTENSIONS = {
 }
 
 
-def get_dummy_extension_from_data(data):
-    file_type = determine_file_type(data)
+def get_dummy_extension_from_data(magic):
+    file_type = file_type_from_magic(magic)
     assert file_type in DUMMY_EXTENSIONS
     return DUMMY_EXTENSIONS[file_type]
