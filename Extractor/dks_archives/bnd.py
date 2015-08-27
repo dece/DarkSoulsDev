@@ -1,6 +1,8 @@
 import os
 from struct import Struct
 
+import dks_archives.bin_utils as bin_utils
+
 
 HEADER_BIN = Struct("<12s5I")
 ENTRY_BIN_24 = Struct("<6I")
@@ -87,7 +89,7 @@ class StandaloneArchive(object):
 
 
 class StandaloneArchiveEntry(object):
-    """
+    """ BND file entry, containing file name and data.
 
     Attributes:
         data_size: see BND documentation
@@ -130,15 +132,7 @@ class StandaloneArchiveEntry(object):
         self._load_data(bnd_file)
 
     def _load_names(self, bnd_file):
-        name_bytes = b""
-        offset = self.name_offset
-        while True:
-            bnd_file.seek(offset)
-            next_byte = bnd_file.read(1)
-            if not next_byte or next_byte == b"\x00":
-                break
-            name_bytes += next_byte
-            offset += 1
+        name_bytes = bin_utils.read_string(bnd_file, self.name_offset)
         self.file_name = name_bytes.decode("shift_jis")
         self._compute_joinable_name()
 

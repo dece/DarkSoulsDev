@@ -42,9 +42,9 @@ class ArchiveManager(object):
     def full_extraction(self, data_dir, output_dir):
         """ Perform the most complete extraction/inflating of data possible. """
         self.extract_external_combined_archives(data_dir, output_dir)
-        # self.extract_internal_combined_archives(data_dir, output_dir)
-        self.inflate_files(output_dir, True)
-        self.extract_standalone_archives(output_dir, True)
+        self.extract_internal_combined_archives(output_dir)
+        # self.inflate_files(output_dir, True)
+        # self.extract_standalone_archives(output_dir, True)
 
     def extract_external_combined_archives(self, data_dir, output_dir):
         """ Extract all files from external composed archive (dvdbnd). """
@@ -77,6 +77,7 @@ class ArchiveManager(object):
                 if extension.endswith("bdt"):
                     bdt_file_path = os.path.join(root, file_name)
                     bhf_file_path = ArchiveManager._get_bhf_path(bdt_file_path)
+                    bdt_extractor.output_dir = 
                     bdt_extractor.extract_archive(bhf_file_path, bdt_file_path)
                     if remove_archives:
                         os.remove(bdt_file_path)
