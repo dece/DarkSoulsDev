@@ -7,6 +7,8 @@ from dks_archives.bnd import StandaloneArchive
 from dks_archives.dcx import CompressedPackage
 
 
+
+
 class ArchiveManager(object):
     """ High-level archive extraction interface.
 
@@ -17,6 +19,7 @@ class ArchiveManager(object):
     """
 
     EXTERNAL_ARCHIVES_IDENT = [0, 1, 2, 3]
+    RELATIVE_ROOT = "N\\FRPG\\data\\INTERROOT_win32"
 
     def __init__(self, resource_dir = None):
         self.hash_maps = {}
@@ -47,11 +50,12 @@ class ArchiveManager(object):
         """ Extract all files from external composed archive (dvdbnd). """
         bhd5_mode = CombinedArchiveExtractorMode.BHD5
         bdt_extractor = CombinedArchiveExtractor(bhd5_mode)
+        output_dir = os.path.join(output_dir, ArchiveManager.RELATIVE_ROOT)
+        bdt_extractor.output_dir = output_dir
         for ident in ArchiveManager.EXTERNAL_ARCHIVES_IDENT:
             bhd_file_path, bdt_file_path = \
                     ArchiveManager._get_bdt_bhd5_paths(data_dir, ident)
             bdt_extractor.hash_map = self.hash_maps[ident]
-            bdt_extractor.output_dir = os.path.join(output_dir, str(ident))
             os.makedirs(bdt_extractor.output_dir, exist_ok = True)
             bdt_extractor.extract_archive(bhd_file_path, bdt_file_path)
 
