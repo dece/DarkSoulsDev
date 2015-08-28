@@ -18,53 +18,56 @@ class CombinedArchiveExtractor(object):
     """ Extract content from BDT/BHD5 archives. """
 
     def __init__(self, mode):
+        self.header = None
         self.output_dir = os.getcwd()
         self.hash_map = None
         self.mode = mode
 
     def extract_archive(self, header_file_path, data_file_path):
-        if self.mode == CombinedArchiveExtractorMode.BHD5:
-            archive_header = CombinedExternalArchiveHeader()
-            archive_header.load_file(header_file_path)
-        elif self.mode == CombinedArchiveExtractorMode.BHF:
-            archive_header = CombinedInternalArchiveHeader()
-            archive_header.load_file(header_file_path)
-        else:
-            raise NotImplementedError()
-
+        self._load_header(header_file_path)
         with open(data_file_path, "rb") as data_file:
-            self._extract_all_files(archive_header, data_file)
+            self._extract_all_files(data_file)
 
-    def _extract_all_files(self, archive_header, data_file):
+    def _load_header(self, header_file_path):
         if self.mode == CombinedArchiveExtractorMode.BHD5:
-
-            for data_entry in archive_header.data_entries:
-                data_file.seek(data_entry.offset)
-                data = data_file.read(data_entry.size)
-                full_name = self._get_full_name(data_entry, data[:4])
-                self._save_file(full_name, data)
-
+            self.header = CombinedExternalArchiveHeader()
         elif self.mode == CombinedArchiveExtractorMode.BHF:
+            self.header = CombinedInternalArchiveHeader()
+        self.header.load_file(header_file_path)
 
-            for file_entry in archive_header.entries:
-                data_file.seek(file_entry.data_offset)
-                data = data_file.read(file_entry.data_size)
-                self._save_file(file_entry.name, data)
+    def _extract_all_files(self, data_file):
+        if self.mode == CombinedArchiveExtractorMode.BHD5:
+            entries = self.header.data_entries
+        elif self.mode == CombinedArchiveExtractorMode.BHF:
+            entries = self.header.entries
+
+        for entry in entries:
+            self._extract_entry(data_file, entry)
+
+    def _extract_entry(self, data_file, entry):
+        if self.mode == CombinedArchiveExtractorMode.BHD5:
+            data_file.seek(entry.offset)
+            data = data_file.read(entry.size)
+            file_name = self._get_full_name(entry, data[:4])
+        elif self.mode == CombinedArchiveExtractorMode.BHF:
+            data_file.seek(entry.data_offset)
+            data = data_file.read(entry.data_size)
+            file_name = entry.name
+
+        self._save_file(file_name, data)
 
     def _get_full_name(self, data_entry, magic = None):
-        eight_chars_hash = hasher.format_hash(data_entry.hash)
-        if self.hash_map is not None and eight_chars_hash in self.hash_map:
-            full_name = self.hash_map[eight_chars_hash]
-            return full_name
+        file_hash = hasher.format_hash(data_entry.hash)
+        if self.hash_map is not None and file_hash in self.hash_map:
+            name = self.hash_map[file_hash]
         else:
-            print("No name for file with hash", eight_chars_hash)
-            return CombinedArchiveExtractor._get_dummy_full_name(
-                    eight_chars_hash, magic
-            )
+            print("No name for file with hash", file_hash)
+            name = CombinedArchiveExtractor.get_dummy_name(file_hash, magic)
+        return name
 
     @staticmethod
-    def _get_dummy_full_name(eight_chars_hash, magic):
-        file_name = "file_" + eight_chars_hash
+    def get_dummy_name(file_hash, magic):
+        file_name = "file_" + file_hash
         file_ext = file_types.get_dummy_extension_from_data(magic)
         full_name = file_name + "." + file_ext
         return full_name
@@ -72,9 +75,10 @@ class CombinedArchiveExtractor(object):
     def _save_file(self, full_name, data):
         joinable_name = os.path.normpath(full_name).lstrip(os.path.sep)
         full_path = os.path.join(self.output_dir, joinable_name)
-        os.makedirs(os.path.dirname(full_path), exist_ok = True)
         print("Extracting", full_path)
         if os.path.isfile(full_path):
             file_names.rename_older_versions(full_path)
+        else:
+            os.makedirs(os.path.dirname(full_path), exist_ok = True)
         with open(full_path, "wb") as output_file:
             output_file.write(data)
