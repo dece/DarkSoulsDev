@@ -11,5 +11,5 @@ for root, dirs, files in os.walk(output_dir):
         ext = ext.lstrip(".")
         extensions.add(ext)
 
-for ext in extensions:
+for ext in sorted(extensions):
     print(ext)
