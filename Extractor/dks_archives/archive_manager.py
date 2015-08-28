@@ -42,12 +42,14 @@ class ArchiveManager(object):
 
     def full_extraction(self, data_dir, output_dir):
         """ Perform the most complete extraction/inflating of data possible. """
-        self.extract_external_combined_archives(data_dir, output_dir)
-        self.extract_internal_combined_archives(output_dir)
-        # self.inflate_files(output_dir, True)
-        # self.extract_standalone_archives(output_dir, True)
+        self.extract_all_external_bdts(data_dir, output_dir)
+        self.inflate_files(output_dir, True)
+        self.extract_all_bnds(output_dir, True)
+        self.extract_all_bnds(output_dir, True)
+        self.extract_all_internal_bdts(output_dir, True)
+        self.inflate_files(output_dir, True)
 
-    def extract_external_combined_archives(self, data_dir, output_dir):
+    def extract_all_external_bdts(self, data_dir, output_dir):
         """ Extract all files from external composed archive (dvdbnd). """
         bhd5_mode = CombinedArchiveExtractorMode.BHD5
         bdt_extractor = CombinedArchiveExtractor(bhd5_mode)
@@ -68,17 +70,19 @@ class ArchiveManager(object):
         bdt_file_path = os.path.join(data_dir, bdt_file_name)
         return bhd_file_path, bdt_file_path
 
-    def extract_internal_combined_archives(self, work_dir,
-            remove_archives = False):
+    def extract_all_internal_bdts(self, work_dir, remove_archives = False):
         bhf_mode = CombinedArchiveExtractorMode.BHF
         bdt_extractor = CombinedArchiveExtractor(bhf_mode)
-        for root, dirs, files in os.walk(work_dir):
+        for root, _, files in os.walk(work_dir):
             for file_name in files:
                 extension = os.path.splitext(file_name)[1]
                 if extension.endswith("bdt"):
-                    bdt_file_path = os.path.join(root, file_name)
+                    bdt_file_path = os.path.join(work_dir, root, file_name)
                     bhf_file_path = ArchiveManager._get_bhf_path(bdt_file_path)
-                    bdt_extractor.output_dir = 
+                    if not os.path.isfile(bhf_file_path):
+                        print("Can't find BHF for", bdt_file_path)
+                        continue
+                    bdt_extractor.output_dir = os.path.dirname(bdt_file_path)
                     bdt_extractor.extract_archive(bhf_file_path, bdt_file_path)
                     if remove_archives:
                         os.remove(bdt_file_path)
@@ -94,7 +98,7 @@ class ArchiveManager(object):
         """
         bdt_dirname = os.path.dirname(bdt_file_path)
         bdt_name, bdt_ext = os.path.splitext(os.path.basename(bdt_file_path))
-        bhf_full_name = bdt_name[:-3] + "bhd"
+        bhf_full_name = bdt_name + bdt_ext[:-3] + "bhd"
         if bdt_ext == ".chrtpfbdt":
             bhf_dirname = os.path.join(bdt_dirname, bdt_name)
             bhf_file_path = os.path.join(bhf_dirname, bhf_full_name)
@@ -104,16 +108,17 @@ class ArchiveManager(object):
 
     def inflate_files(self, work_dir, remove_dcx = False):
         """ Inflate (= decompress) all DCX files in work_dir. """
-        for root, dirs, files in os.walk(work_dir):
+        for root, _, files in os.walk(work_dir):
             for file_name in files:
                 extension = os.path.splitext(file_name)[1]
                 if extension == ".dcx":
                     full_path = os.path.join(root, file_name)
-                    self._inflate_file(full_path)
+                    ArchiveManager._inflate_file(full_path)
                     if remove_dcx:
                         os.remove(full_path)
 
-    def _inflate_file(self, dcx_file_path):
+    @staticmethod
+    def _inflate_file(dcx_file_path):
         dcx = CompressedPackage()
         dcx.load_file(dcx_file_path)
         inflated_file_path = os.path.splitext(dcx_file_path)[0]
@@ -121,16 +126,17 @@ class ArchiveManager(object):
         if not os.path.splitext(inflated_file_path)[1]:
             file_names.rename_with_fitting_extension(inflated_file_path)
 
-    def extract_standalone_archives(self, work_dir, remove_bnd = False):
-        for root, dirs, files in os.walk(work_dir):
+    def extract_all_bnds(self, work_dir, remove_bnd = False):
+        for root, _, files in os.walk(work_dir):
             for file_name in files:
                 if file_name.endswith("bnd"):
                     full_path = os.path.join(root, file_name)
-                    self._extract_standalone_archive(full_path, work_dir)
+                    ArchiveManager._extract_bnd(full_path, work_dir)
                     if remove_bnd:
                         os.remove(full_path)
 
-    def _extract_standalone_archive(self, bnd_file_path, output_dir):
+    @staticmethod
+    def _extract_bnd(bnd_file_path, output_dir):
         bnd = StandaloneArchive()
         bnd.load_file(bnd_file_path)
         bnd.extract_all_files(output_dir)

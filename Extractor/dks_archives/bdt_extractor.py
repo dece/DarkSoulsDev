@@ -41,7 +41,6 @@ class CombinedArchiveExtractor(object):
             for data_entry in archive_header.data_entries:
                 data_file.seek(data_entry.offset)
                 data = data_file.read(data_entry.size)
-
                 full_name = self._get_full_name(data_entry, data[:4])
                 self._save_file(full_name, data)
 
@@ -50,10 +49,7 @@ class CombinedArchiveExtractor(object):
             for file_entry in archive_header.entries:
                 data_file.seek(file_entry.data_offset)
                 data = data_file.read(file_entry.data_size)
-
-                file_name = os.path.normpath(file_entry.name).lstrip(os.path.sep)
-                full_name = os.path.join(self.output_dir, file_name)
-                self._save_file(full_name, data)
+                self._save_file(file_entry.name, data)
 
     def _get_full_name(self, data_entry, magic = None):
         eight_chars_hash = hasher.format_hash(data_entry.hash)
@@ -78,6 +74,7 @@ class CombinedArchiveExtractor(object):
         full_path = os.path.join(self.output_dir, joinable_name)
         os.makedirs(os.path.dirname(full_path), exist_ok = True)
         print("Extracting", full_path)
-        assert not os.path.isfile(full_path)
+        if os.path.isfile(full_path):
+            file_names.rename_older_versions(full_path)
         with open(full_path, "wb") as output_file:
             output_file.write(data)
