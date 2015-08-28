@@ -64,7 +64,7 @@ class StandaloneArchive(object):
 
     def _determine_entry_type(self):
         if self.flags not in [0x54, 0x70, 0x74]:
-            error_message = "Unknown BndHeader.infos: {}".format(self.infos)
+            error_message = "Unknown BndHeader.infos: {}".format(self.flags)
             raise NotImplementedError(error_message)
 
         if self.flags & StandaloneArchive.FLAGS["USE_24_BYTES_STRUCT"]:
