@@ -15,6 +15,9 @@ class FileType(Enum):
     FSB = 7
     BJBO = 8
     NFD = 9
+    EDF = 10
+    ELD = 11
+    EVD = 12
 
 
 MAGICS = {
@@ -26,7 +29,10 @@ MAGICS = {
     b"FEV1": FileType.FEV,
     b"FSB4": FileType.FSB,
     b"BJBO": FileType.BJBO,
-    b"DFPN": FileType.NFD
+    b"DFPN": FileType.NFD,
+    b"EDF\x00": FileType.EDF,
+    b"ELD\x00": FileType.ELD,
+    b"EVD\x00": FileType.EVD
 }
 
 
@@ -47,7 +53,10 @@ DUMMY_EXTENSIONS = {
     FileType.FEV: "fev",
     FileType.FSB: "fsb",
     FileType.BJBO: "bjbo",
-    FileType.NFD: "nfd"
+    FileType.NFD: "nfd",
+    FileType.EDF: "emedf",
+    FileType.ELD: "eld",
+    FileType.EVD: "evd"
 }
 
 
