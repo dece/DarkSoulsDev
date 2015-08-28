@@ -1,13 +1,11 @@
 import json
 import os
 
-from dks_archives.bdt_extractor import ( CombinedArchiveExtractor
-                                       , CombinedArchiveExtractorMode )
+from dks_archives.bdt_extractor import CombinedArchiveExtractor
+from dks_archives.bdt_extractor import CombinedArchiveExtractorMode as CaeMode
 from dks_archives.bnd import StandaloneArchive
 from dks_archives.dcx import CompressedPackage
 import dks_archives.file_names as file_names
-
-
 
 
 class ArchiveManager(object):
@@ -19,77 +17,99 @@ class ArchiveManager(object):
     a bug.
     """
 
-    EXTERNAL_ARCHIVES_IDENT = [0, 1, 2, 3]
-    RELATIVE_ROOT = "N\\FRPG\\data\\INTERROOT_win32"
-
-    def __init__(self, resource_dir = None):
-        self.hash_maps = {}
-        if resource_dir is not None:
-            self.load_resources(resource_dir)
-
-    def load_resources(self, resource_dir):
-        self._load_hash_maps(resource_dir)
-
-    def _load_hash_maps(self, resource_dir):
-        for ident in ArchiveManager.EXTERNAL_ARCHIVES_IDENT:
-            hash_map_file_name = "dvdbnd{}.hashmap.json".format(ident)
-            hash_map_file_path = os.path.join(resource_dir, hash_map_file_name)
-            self._load_hash_map(ident, hash_map_file_path)
-
-    def _load_hash_map(self, ident, hash_map_file_path):
-        with open(hash_map_file_path, "r") as hash_map_file:
-            self.hash_maps[ident] = json.load(hash_map_file)
+    def __init__(self, resource_dir):
+        self.resource_dir = resource_dir
+        self.external_bdt_manager = None
+        self.internal_bdt_manager = None
+        self.file_inflater = None
+        self.bnd_manager = None
 
     def full_extraction(self, data_dir, output_dir):
         """ Perform the most complete extraction/inflating of data possible. """
-        self.extract_all_external_bdts(data_dir, output_dir)
-        self.inflate_files(output_dir, True)
-        self.extract_all_bnds(output_dir, True)
-        self.extract_all_bnds(output_dir, True)
-        self.extract_all_internal_bdts(output_dir, True)
-        self.inflate_files(output_dir, True)
+        self._prepare_extraction(data_dir, output_dir)
+        self.external_bdt_manager.extract_all()
+        self.file_inflater.inflate_files()
+        self.bnd_manager.extract_all()
+        self.bnd_manager.extract_all()
+        self.internal_bdt_manager.extract_all()
+        self.file_inflater.inflate_files()
 
-    def extract_all_external_bdts(self, data_dir, output_dir):
+    def _prepare_extraction(self, data_dir, output_dir):
+        self.external_bdt_manager = \
+                ExternalBdtManager(data_dir, self.resource_dir, output_dir)
+        self.internal_bdt_manager = InternalBdtManager(output_dir, True)
+        self.file_inflater = FileInflater(output_dir, True)
+        self.bnd_manager = BndManager(output_dir, True)
+
+
+class ExternalBdtManager(object):
+
+    EXTERNAL_ARCHIVES_IDENT = [0, 1, 2, 3]
+
+    def __init__(self, data_dir, resource_dir, output_dir):
+        self.data_dir = data_dir
+        self.output_dir = os.path.join(output_dir, file_names.RELATIVE_ROOT)
+        self.hash_maps = {}
+        self._load_hash_maps(resource_dir)
+
+    def _load_hash_maps(self, resource_dir):
+        for ident in ExternalBdtManager.EXTERNAL_ARCHIVES_IDENT:
+            hash_map_file_name = "dvdbnd{}.hashmap.json".format(ident)
+            hash_map_file_path = os.path.join(resource_dir, hash_map_file_name)
+            with open(hash_map_file_path, "r") as hash_map_file:
+                self.hash_maps[ident] = json.load(hash_map_file)
+
+    def extract_all(self):
         """ Extract all files from external composed archive (dvdbnd). """
-        bhd5_mode = CombinedArchiveExtractorMode.BHD5
-        bdt_extractor = CombinedArchiveExtractor(bhd5_mode)
-        output_dir = os.path.join(output_dir, ArchiveManager.RELATIVE_ROOT)
-        bdt_extractor.output_dir = output_dir
-        for ident in ArchiveManager.EXTERNAL_ARCHIVES_IDENT:
+        bdt_extractor = CombinedArchiveExtractor(CaeMode.BHD5)
+        bdt_extractor.output_dir = self.output_dir
+
+        for ident in ExternalBdtManager.EXTERNAL_ARCHIVES_IDENT:
             bhd_file_path, bdt_file_path = \
-                    ArchiveManager._get_bdt_bhd5_paths(data_dir, ident)
+                    ExternalBdtManager.get_bdt_bhd5_paths(self.data_dir, ident)
             bdt_extractor.hash_map = self.hash_maps[ident]
-            os.makedirs(bdt_extractor.output_dir, exist_ok = True)
             bdt_extractor.extract_archive(bhd_file_path, bdt_file_path)
 
     @staticmethod
-    def _get_bdt_bhd5_paths(data_dir, ident):
+    def get_bdt_bhd5_paths(data_dir, ident):
         bhd_file_name = "dvdbnd{}.bhd5".format(ident)
         bhd_file_path = os.path.join(data_dir, bhd_file_name)
         bdt_file_name = "dvdbnd{}.bdt".format(ident)
         bdt_file_path = os.path.join(data_dir, bdt_file_name)
         return bhd_file_path, bdt_file_path
 
-    def extract_all_internal_bdts(self, work_dir, remove_archives = False):
-        bhf_mode = CombinedArchiveExtractorMode.BHF
-        bdt_extractor = CombinedArchiveExtractor(bhf_mode)
-        for root, _, files in os.walk(work_dir):
+
+class InternalBdtManager(object):
+
+    def __init__(self, work_dir, remove_archives = False):
+        self.work_dir = work_dir
+        self.remove_archives = remove_archives
+        self.extractor = CombinedArchiveExtractor(CaeMode.BHF)
+
+    def extract_all(self):
+        for root, _, files in os.walk(self.work_dir):
             for file_name in files:
-                extension = os.path.splitext(file_name)[1]
-                if extension.endswith("bdt"):
-                    bdt_file_path = os.path.join(work_dir, root, file_name)
-                    bhf_file_path = ArchiveManager._get_bhf_path(bdt_file_path)
-                    if not os.path.isfile(bhf_file_path):
-                        print("Can't find BHF for", bdt_file_path)
-                        continue
-                    bdt_extractor.output_dir = os.path.dirname(bdt_file_path)
-                    bdt_extractor.extract_archive(bhf_file_path, bdt_file_path)
-                    if remove_archives:
-                        os.remove(bdt_file_path)
-                        os.remove(bhf_file_path)
+                if InternalBdtManager.is_bdt(file_name):
+                    bdt_file_path = os.path.join(root, file_name)
+                    self.extract_bdt(bdt_file_path)
 
     @staticmethod
-    def _get_bhf_path(bdt_file_path):
+    def is_bdt(file_name):
+        return file_name.endswith("bdt")
+
+    def extract_bdt(self, bdt_file_path):
+        bhf_file_path = InternalBdtManager.get_bhf_path(bdt_file_path)
+        if not os.path.isfile(bhf_file_path):
+            print("Can't find BHF for", bdt_file_path)
+            return
+        self.extractor.output_dir = os.path.dirname(bdt_file_path)
+        self.extractor.extract_archive(bhf_file_path, bdt_file_path)
+        if self.remove_archives:
+            os.remove(bdt_file_path)
+            os.remove(bhf_file_path)
+
+    @staticmethod
+    def get_bhf_path(bdt_file_path):
         """ Get the path of the BHF file corresponding to that BDT file.
 
         The general case is that it's in the same directory, but for CHRTPFBDT
@@ -106,19 +126,32 @@ class ArchiveManager(object):
             bhf_file_path = os.path.join(bdt_dirname, bhf_full_name)
         return bhf_file_path
 
-    def inflate_files(self, work_dir, remove_dcx = False):
-        """ Inflate (= decompress) all DCX files in work_dir. """
-        for root, _, files in os.walk(work_dir):
+
+class FileInflater(object):
+    """ Decompress all DCX in a directory tree. """
+
+    def __init__(self, work_dir, remove_dcx = False):
+        self.work_dir = work_dir
+        self.remove_dcx = remove_dcx
+
+    def inflate_files(self):
+        for root, _, files in os.walk(self.work_dir):
             for file_name in files:
-                extension = os.path.splitext(file_name)[1]
-                if extension == ".dcx":
+                if FileInflater.is_dcx(file_name):
                     full_path = os.path.join(root, file_name)
-                    ArchiveManager._inflate_file(full_path)
-                    if remove_dcx:
+                    FileInflater.inflate_file(full_path)
+                    if self.remove_dcx:
                         os.remove(full_path)
 
     @staticmethod
-    def _inflate_file(dcx_file_path):
+    def is_dcx(file_name):
+        extension = os.path.splitext(file_name)[1]
+        return extension == ".dcx"
+
+    @staticmethod
+    def inflate_file(dcx_file_path):
+        """ Decompress the file contained in the DCX, and name it with a proper
+        extension if possible. """
         dcx = CompressedPackage()
         dcx.load_file(dcx_file_path)
         inflated_file_path = os.path.splitext(dcx_file_path)[0]
@@ -126,17 +159,28 @@ class ArchiveManager(object):
         if not os.path.splitext(inflated_file_path)[1]:
             file_names.rename_with_fitting_extension(inflated_file_path)
 
-    def extract_all_bnds(self, work_dir, remove_bnd = False):
-        for root, _, files in os.walk(work_dir):
+
+class BndManager(object):
+
+    def __init__(self, work_dir, remove_bnd = False):
+        self.work_dir = work_dir
+        self.remove_bnd = remove_bnd
+
+    def extract_all(self):
+        for root, _, files in os.walk(self.work_dir):
             for file_name in files:
-                if file_name.endswith("bnd"):
+                if BndManager.is_bnd(file_name):
                     full_path = os.path.join(root, file_name)
-                    ArchiveManager._extract_bnd(full_path, work_dir)
-                    if remove_bnd:
+                    BndManager.extract_bnd(full_path, self.work_dir)
+                    if self.remove_bnd:
                         os.remove(full_path)
 
     @staticmethod
-    def _extract_bnd(bnd_file_path, output_dir):
+    def is_bnd(file_name):
+        return file_name.endswith("bnd")
+
+    @staticmethod
+    def extract_bnd(bnd_file_path, output_dir):
         bnd = StandaloneArchive()
         bnd.load_file(bnd_file_path)
         bnd.extract_all_files(output_dir)

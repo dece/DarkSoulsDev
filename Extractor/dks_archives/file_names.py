@@ -3,6 +3,8 @@ import os
 import dks_archives.file_types as file_types
 
 
+RELATIVE_ROOT = "N\\FRPG\\data\\INTERROOT_win32"
+
 RENAME_TEMPLATE = ".old_{}"
 RENAME_MSG = ( "This file already exists. "
                "The older version has been renamed with a .old extension." )
