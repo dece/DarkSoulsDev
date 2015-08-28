@@ -55,8 +55,8 @@ DUMMY_EXTENSIONS = {
     FileType.BJBO: "bjbo",
     FileType.NFD: "nfd",
     FileType.EDF: "emedf",
-    FileType.ELD: "eld",
-    FileType.EVD: "evd"
+    FileType.ELD: "emeld",
+    FileType.EVD: "emevd"
 }
 
 

@@ -7,7 +7,7 @@ import time
 
 from dks_archives.archive_manager import ArchiveManager
 
-DESCRIPTION = "Dark Souls archive parser"
+DESCRIPTION = "Dark Souls archive parser - extract every archive file"
 
 
 def main():
