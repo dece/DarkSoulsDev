@@ -1,4 +1,5 @@
-Output/
-RawContent/
+Extracted*/
 Samples/
-Notes
+Tools/
+*.lnk
+*.7z
