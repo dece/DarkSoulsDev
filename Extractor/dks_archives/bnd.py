@@ -2,6 +2,7 @@ import os
 from struct import Struct
 
 import dks_archives.bin_utils as bin_utils
+import dks_archives.file_names as file_names
 
 
 HEADER_BIN = Struct("<12s5I")
@@ -156,6 +157,7 @@ class StandaloneArchiveEntry(object):
         # if os.path.isfile(output_file_path):  # TEMP, just go quicker
         #     return
         print("Extracting BND file at", output_file_path)
-        assert not os.path.isfile(output_file_path)
+        if os.path.isfile(output_file_path):
+            file_names.rename_older_versions(output_file_path)
         with open(output_file_path, "wb") as output_file:
             output_file.write(self.file_data)

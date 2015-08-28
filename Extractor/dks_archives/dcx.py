@@ -1,5 +1,8 @@
+import os
 from struct import Struct
 import zlib
+
+import dks_archives.file_names as file_names
 
 
 DCX_MAGIC = 0x44435800
@@ -73,7 +76,8 @@ class CompressedPackage(object):
     def uncompress(self, output_file_path):
         uncompressed = zlib.decompress(self.zlib_data)
         print("Decompressing file at", output_file_path)
-        assert not os.path.isfile(output_file_path)
+        if os.path.isfile(output_file_path):
+            file_names.rename_older_versions(output_file_path)
         with open(output_file_path, "wb") as output_file:
             output_file.write(uncompressed)
 

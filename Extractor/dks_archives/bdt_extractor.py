@@ -1,9 +1,9 @@
 from enum import Enum
 import os
-from struct import Struct
 
 from dks_archives.bhd5 import CombinedExternalArchiveHeader
 from dks_archives.bhf import CombinedInternalArchiveHeader
+import dks_archives.file_names as file_names
 import dks_archives.file_types as file_types
 import dks_archives.hasher as hasher
 

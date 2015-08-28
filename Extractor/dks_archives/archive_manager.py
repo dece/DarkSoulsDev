@@ -5,6 +5,7 @@ from dks_archives.bdt_extractor import ( CombinedArchiveExtractor
                                        , CombinedArchiveExtractorMode )
 from dks_archives.bnd import StandaloneArchive
 from dks_archives.dcx import CompressedPackage
+import dks_archives.file_names as file_names
 
 
 
@@ -117,6 +118,8 @@ class ArchiveManager(object):
         dcx.load_file(dcx_file_path)
         inflated_file_path = os.path.splitext(dcx_file_path)[0]
         dcx.uncompress(inflated_file_path)
+        if not os.path.splitext(inflated_file_path)[1]:
+            file_names.rename_with_fitting_extension(inflated_file_path)
 
     def extract_standalone_archives(self, work_dir, remove_bnd = False):
         for root, dirs, files in os.walk(work_dir):
