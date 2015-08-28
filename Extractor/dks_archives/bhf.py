@@ -28,7 +28,7 @@ class CombinedInternalArchiveHeader(object):
 
     def _load_header(self, bhf_file):
         bhf_file.seek(0)
-        data = bnd_file.read(HEADER_BIN.size)
+        data = bhf_file.read(HEADER_BIN.size)
         unpacked = HEADER_BIN.unpack(data)
         self.magic = unpacked[0]
         # self.unk1 = unpacked[1]
@@ -36,7 +36,7 @@ class CombinedInternalArchiveHeader(object):
         # self.unk2 = unpacked[3]
         # self.unk3 = unpacked[4]
         # self.unk4 = unpacked[5]
-    
+
     def _load_entries(self, bhf_file):
         bhf_file.seek(HEADER_BIN.size)
         offset = bhf_file.tell()
@@ -59,6 +59,7 @@ class CombinedInternalArchiveHeaderEntry(object):
         self.name = ""
 
     def load_entry(self, bhf_file, offset):
+        bhf_file.seek(offset)
         data = bhf_file.read(ENTRY_BIN.size)
         unpacked = ENTRY_BIN.unpack(data)
         # self.unk1 = unpacked[0]
