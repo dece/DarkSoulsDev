@@ -79,6 +79,31 @@ class CombinedExternalArchiveHeader(object):
         self.file_size += DATA_ENTRY_BIN.size
         return entry_offset
 
+    def save_file(self, output_path):
+        header_data = self._pack_header()
+        records_data = self._pack_entry_records()
+        entries_data = self._pack_data_entries()
+        data = header_data + records_data + entries_data
+        with open(output_path, "wb") as output_file:
+            output_file.write(data)
+
+    def _pack_header(self):
+        data = ( self.magic, self.unk1, self.unk2
+               , self.file_size, self.num_records, self.records_offset )
+        return HEADER_BIN.pack(*data)
+
+    def _pack_entry_records(self):
+        records_data = b""
+        for record in self.entry_records:
+            records_data += record.pack_record()
+        return records_data
+
+    def _pack_data_entries(self):
+        entries_data = b""
+        for entry in self.data_entries:
+            entries_data += entry.pack_entry()
+        return entries_data
+
 
 class EntryRecord(object):
     """ Entry record, pointing to a bunch of data entries. """
@@ -93,6 +118,10 @@ class EntryRecord(object):
         unpacked = ENTRY_RECORD_BIN.unpack(data)
         self.num_entries = unpacked[0]
         self.entries_offset = unpacked[1]
+
+    def pack_record(self):
+        data = (self.num_entries, self.entries_offset)
+        return ENTRY_RECORD_BIN.pack(*data)
 
 
 class DataEntry(object):
@@ -117,3 +146,7 @@ class DataEntry(object):
         self.size = unpacked[1]
         self.offset = unpacked[2]
         self.unk = unpacked[3]
+
+    def pack_entry(self):
+        data = (self.hash, self.size, self.offset, self.unk)
+        return DATA_ENTRY_BIN.pack(*data)
