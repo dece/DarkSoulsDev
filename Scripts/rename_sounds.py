@@ -1,5 +1,8 @@
-""" Rename all game sounds according to the sheet from Illusorywall. This script
-should be used with the directory tree of my extract_sounds.py script.
+""" Rename some game sounds according to the sheet from Illusorywall.
+
+This script should be used with the directory tree of my extract_sounds.py
+script. This is highly incomplete as its based on an incomplete list of only NPC
+names. Could be done better with more data later.
 
 Google Drive Sheet :
 https://docs.google.com/spreadsheets/d/1AdlhpYFITAGnKVAIBMVverQ_E5m5xA19m0rG0Diyixs/edit#gid=0
