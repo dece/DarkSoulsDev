@@ -55,9 +55,9 @@ def parse_row(raw_row):
 def get_new_name(package, model, enemies):
     for enemy in enemies:
         if enemy["model"] == model:
-            new_name = "{} {} {} ({})".format(
-                package, model, enemy["real_name"], enemy["common_name"]
-            )
+            new_name = package + " " + model + " " + enemy["real_name"]
+            if enemy["common_name"]:
+                new_name += " (" + enemy["common_name"] + ")"
             new_name = clean_string(new_name)
             return new_name
     return ""
