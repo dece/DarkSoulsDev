@@ -13,3 +13,9 @@ def read_string(data, offset):
         string_bytes += next_byte
         offset += 1
     return string_bytes
+
+
+def pad_data(data, padding):
+    missing_padding_size = padding - (len(data) % padding):
+    data += missing_padding_size * b"\x00"
+    return data
