@@ -9,15 +9,21 @@ DATA_ENTRY_BIN = Struct("<4I")
 
 
 class CombinedExternalArchiveHeader(object):
-    """ BHD5 parser. Some useless elements commented for performance. """
+    """ BHD5 parser. Some useless elements commented for performance.
+
+    To keep all offsets valid, do not modify the entry_records end data_entries
+    lists directly but use the given methods to work with them. Currently, only
+    adding stuff is supported.
+    """
 
     def __init__(self):
         self.magic = 0
-        # self.unk1 = 0
-        # self.unk2 = 0
+        self.unk1 = 0
+        self.unk2 = 0
         self.file_size = 0
         self.num_records = 0
         self.records_offset = 0
+
         self.entry_records = []
         self.data_entries = []
 
@@ -32,8 +38,8 @@ class CombinedExternalArchiveHeader(object):
         data = header_file.read(HEADER_BIN.size)
         unpacked = HEADER_BIN.unpack(data)
         self.magic = unpacked[0]
-        # self.unk1 = unpacked[1]
-        # self.unk2 = unpacked[2]
+        self.unk1 = unpacked[1]
+        self.unk2 = unpacked[2]
         self.file_size = unpacked[3]
         self.num_records = unpacked[4]
         self.records_offset = unpacked[5]
@@ -57,13 +63,21 @@ class CombinedExternalArchiveHeader(object):
                 self.data_entries.append(data_entry)
                 offset += DATA_ENTRY_BIN.size
 
-    def get_info_string(self):
-        info_string = "Header of {} bytes, {} records and {} entries.\n".format(
-            self.file_size, self.num_records, len(self.data_entries)
-        )
-        for entry in self.data_entries:
-            info_string += str(entry) + "\n"
-        return info_string
+    def add_record(self, new_record):
+        """ Add a record to the BHD and updates all other records offsets. """
+        self.entry_records.append(new_record)
+        self.file_size += ENTRY_RECORD_BIN.size
+        self.num_records += 1
+        for record in self.entry_records:
+            record.entries_offset += ENTRY_RECORD_BIN.size
+
+    def add_entry(self, new_entry):
+        entry_offset = ( HEADER_BIN.size
+                       + self.num_records * ENTRY_RECORD_BIN.size
+                       + len(self.data_entries) * DATA_ENTRY_BIN.size )
+        self.data_entries.append(new_entry)
+        self.file_size += DATA_ENTRY_BIN.size
+        return entry_offset
 
 
 class EntryRecord(object):
@@ -88,7 +102,7 @@ class DataEntry(object):
         self.hash = 0
         self.size = 0
         self.offset = 0
-        # self.unk = 0
+        self.unk = 0
 
     def __str__(self):
         return "Entry of {} bytes at offset {} of hash {}".format(
@@ -102,4 +116,4 @@ class DataEntry(object):
         self.hash = unpacked[0]
         self.size = unpacked[1]
         self.offset = unpacked[2]
-        # self.unk = unpacked[3]
+        self.unk = unpacked[3]
