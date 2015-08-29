@@ -31,8 +31,8 @@ class StandaloneArchive(object):
         self.flags = 0
         self.num_entries = 0
         self.data_offset = 0
-        # self.unk2 = 0
-        # self.unk3 = 0
+        self.unk1 = 0
+        self.unk2 = 0
 
         self.entries = []
         self.dirname = ""
@@ -52,8 +52,8 @@ class StandaloneArchive(object):
         self.flags = unpacked[1]
         self.num_entries = unpacked[2]
         self.data_offset = unpacked[3]
-        # self.unk1 = unpacked[4]
-        # self.unk2 = unpacked[5]
+        self.unk1 = unpacked[4]
+        self.unk2 = unpacked[5]
 
     def _load_entries(self, bnd_file):
         bnd_file.seek(HEADER_BIN.size)
@@ -158,8 +158,6 @@ class StandaloneArchiveEntry(object):
         return self.file_name[:2].upper() == "N:"
 
     def extract_entry(self, output_file_path):
-        # if os.path.isfile(output_file_path):  # TEMP, just go quicker
-        #     return
         print("Extracting BND file at", output_file_path)
         if os.path.isfile(output_file_path):
             file_names.rename_older_versions(output_file_path)
@@ -198,7 +196,9 @@ class StandaloneArchiveCreator(object):
         return bnd_data
 
     def _pad_blocks(self):
-        self.strings_data = bin_utils.pad_data(self.strings_data, 16)
+        strings_offset, _ = self._get_blocks_offset()
+        self.strings_data = bin_utils.pad_data( self.strings_data, 16
+                                              , start_at = strings_offset % 16 )
 
     def _get_blocks_offset(self):
         """ Compute offset to strings and data blocks, once all entries and
@@ -212,13 +212,13 @@ class StandaloneArchiveCreator(object):
         magic = SOME_BND_MAGIC
         flags = ( StandaloneArchive.FLAGS["USE_24_BYTES_STRUCT"]
                 | StandaloneArchive.FLAGS["UNK5"]
-                | StandaloneArchive.FLAGS["UNK6"] 
+                | StandaloneArchive.FLAGS["UNK6"]
                 | StandaloneArchive.FLAGS["UNK7"] )
         num_entries = len(self.entries)
         data_offset = files_offset
 
         data = (magic, flags, num_entries, data_offset, 0, 0)
-        header_data = HEADER_BIN.pack(data)
+        header_data = HEADER_BIN.pack(*data)
         return header_data
 
     def _generate_bnd_entries(self, strings_offset, files_offset):
@@ -232,7 +232,7 @@ class StandaloneArchiveCreator(object):
             unk2 = entry.unk2
 
             data = (unk1, data_size, data_offset, ident, name_offset, unk2)
-            packed = ENTRY_BIN_24.pack(data)
+            packed = ENTRY_BIN_24.pack(*data)
             entries_data += packed
         return entries_data
 
@@ -249,9 +249,11 @@ class StandaloneArchiveCreator(object):
         later to have their correct absolute value.
         """
         entry = StandaloneArchiveEntry()
+        entry.unk1 = 0x40  # general default value
         entry.ident = self._get_next_ident()
         self._register_entry_name(entry, virtual_file_path)
         self._load_entry_file(entry, real_file_path)
+        return entry
 
     def _get_next_ident(self):
         next_ident = self.next_ident
@@ -269,7 +271,11 @@ class StandaloneArchiveCreator(object):
         """ Load file_data in data_size for this entry with the given file. """
         with open(file_path, "rb") as entry_file:
             file_data = entry_file.read()
+
         entry.data_size = len(file_data)
+        entry.unk2 = entry.data_size
+
+        if self.files_data:
+            self.files_data = bin_utils.pad_data(self.files_data, 16)
         entry.data_offset = len(self.files_data)
-        self.files_data += entry.file_data
-        self.files_data = bin_utils.pad_data(self.files_data, 16)
+        self.files_data += file_data
