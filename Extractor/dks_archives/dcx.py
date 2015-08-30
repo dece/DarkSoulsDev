@@ -12,6 +12,7 @@ DCS_MAGIC = 0x44435300
 
 DCP_MAGIC = 0x44435000
 DCP_METHOD = b"DFLT"
+DCP_CONST_UNK1 = 0x09000000
 DCP_CONST_UNK5 = 0x00010100
 
 DCA_MAGIC = 0x44434100
@@ -19,7 +20,7 @@ DCA_CONST_OFFSET = 0x8
 
 HEADER_BIN = Struct(">6I")
 SIZES_BIN = Struct(">3I")
-PARAMETERS_BIN = Struct(">8I")  # that's one pissed off struct!
+PARAMETERS_BIN = Struct(">I4s6I")
 ZLIB_CONTAINER_BIN = Struct(">2I")
 
 
@@ -232,6 +233,7 @@ class Compressor(object):
         dcx_params.magic = DCP_MAGIC
         dcx_params.method = DCP_METHOD
         dcx_params.dca_offset = PARAMETERS_BIN.size
+        dcx_params.unk1 = DCP_CONST_UNK1
         dcx_params.unk5 = DCP_CONST_UNK5
         self.dcx.parameters = dcx_params
 
