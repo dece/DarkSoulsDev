@@ -1,6 +1,6 @@
 from struct import Struct
 
-import dks_archives.bin_utils as bin_utils
+from shgck_tools.bin import read_cstring
 
 
 BHD5_MAGIC = 0x33464842
@@ -71,5 +71,5 @@ class CombinedInternalArchiveHeaderEntry(object):
         self._load_name(bhf_file)
 
     def _load_name(self, bhf_file):
-        name_bytes = bin_utils.read_string(bhf_file, self.name_offset)
+        name_bytes = read_cstring(bhf_file, self.name_offset)
         self.name = name_bytes.decode("shift_jis")

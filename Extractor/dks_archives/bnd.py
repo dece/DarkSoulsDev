@@ -1,7 +1,7 @@
 import os
 from struct import Struct
 
-import dks_archives.bin_utils as bin_utils
+from shgck_tools.bin import read_cstring, pad_data
 import dks_archives.file_names as file_names
 
 
@@ -137,7 +137,7 @@ class StandaloneArchiveEntry(object):
         self._load_data(bnd_file)
 
     def _load_names(self, bnd_file):
-        name_bytes = bin_utils.read_string(bnd_file, self.name_offset)
+        name_bytes = read_cstring(bnd_file, self.name_offset)
         self.file_name = name_bytes.decode("shift_jis")
         self._compute_joinable_name()
 
@@ -197,8 +197,9 @@ class StandaloneArchiveCreator(object):
 
     def _pad_blocks(self):
         strings_offset, _ = self._get_blocks_offset()
-        self.strings_data = bin_utils.pad_data( self.strings_data, 16
-                                              , start_at = strings_offset % 16 )
+        self.strings_data = pad_data(
+            self.strings_data, 16, start_at = strings_offset % 16
+        )
 
     def _get_blocks_offset(self):
         """ Compute offset to strings and data blocks, once all entries and
@@ -276,6 +277,6 @@ class StandaloneArchiveCreator(object):
         entry.unk2 = entry.data_size
 
         if self.files_data:
-            self.files_data = bin_utils.pad_data(self.files_data, 16)
+            self.files_data = pad_data(self.files_data, 16)
         entry.data_offset = len(self.files_data)
         self.files_data += file_data
