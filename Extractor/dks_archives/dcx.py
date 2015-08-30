@@ -199,12 +199,10 @@ class Compressor(object):
     def __init__(self):
         self.dcx = CompressedPackage()
 
-    def compress_file(self, file_to_compress):
+    def compress_file(self, file_to_compress, output_path):
         self._prepare_dcx()
         self.dcx.compress(file_to_compress)
         self._create_chunks(file_to_compress)
-
-        output_path = file_to_compress + ".dcx"
         self.dcx.save_file(output_path)
 
     def _prepare_dcx(self):
