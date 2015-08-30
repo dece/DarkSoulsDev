@@ -1,10 +1,9 @@
 import json
 import os
 
-from dks_archives.bdt_extractor import CombinedArchiveExtractor
-from dks_archives.bdt_extractor import CombinedArchiveExtractorMode as CaeMode
-from dks_archives.bnd import StandaloneArchive
-from dks_archives.dcx import CompressedPackage
+from dks_archives.bdt_extractor import BdtExtractor, BdtExtractorMode
+from dks_archives.bnd import Bnd
+from dks_archives.dcx import Dcx
 import dks_archives.file_names as file_names
 
 
@@ -61,7 +60,7 @@ class ExternalBdtManager(object):
 
     def extract_all(self):
         """ Extract all files from external composed archive (dvdbnd). """
-        bdt_extractor = CombinedArchiveExtractor(CaeMode.BHD5)
+        bdt_extractor = BdtExtractor(BdtExtractorMode.BHD5)
         bdt_extractor.output_dir = self.output_dir
 
         for ident in ExternalBdtManager.EXTERNAL_ARCHIVES_IDENT:
@@ -84,7 +83,7 @@ class InternalBdtManager(object):
     def __init__(self, work_dir, remove_archives = False):
         self.work_dir = work_dir
         self.remove_archives = remove_archives
-        self.extractor = CombinedArchiveExtractor(CaeMode.BHF)
+        self.extractor = BdtExtractor(BdtExtractorMode.BHF)
 
     def extract_all(self):
         for root, _, files in os.walk(self.work_dir):
@@ -152,7 +151,7 @@ class FileInflater(object):
     def inflate_file(dcx_file_path):
         """ Decompress the file contained in the DCX, and name it with a proper
         extension if possible. """
-        dcx = CompressedPackage()
+        dcx = Dcx()
         dcx.load_file(dcx_file_path)
         inflated_file_path = os.path.splitext(dcx_file_path)[0]
         dcx.uncompress(inflated_file_path)
@@ -181,6 +180,6 @@ class BndManager(object):
 
     @staticmethod
     def extract_bnd(bnd_file_path, output_dir):
-        bnd = StandaloneArchive()
+        bnd = Bnd()
         bnd.load_file(bnd_file_path)
         bnd.extract_all_files(output_dir)

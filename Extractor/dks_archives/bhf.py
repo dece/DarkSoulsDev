@@ -9,7 +9,7 @@ HEADER_BIN = Struct("<12s5I")
 ENTRY_BIN = Struct("<6I")
 
 
-class CombinedInternalArchiveHeader(object):
+class Bhf(object):
     """ BHD5 parser. Some useless elements commented for performance. """
 
     def __init__(self):
@@ -41,13 +41,13 @@ class CombinedInternalArchiveHeader(object):
         bhf_file.seek(HEADER_BIN.size)
         offset = bhf_file.tell()
         for _ in range(self.num_entries):
-            entry = CombinedInternalArchiveHeaderEntry()
+            entry = BhfEntry()
             entry.load_entry(bhf_file, offset)
             self.entries.append(entry)
             offset += ENTRY_BIN.size
 
 
-class CombinedInternalArchiveHeaderEntry(object):
+class BhfEntry(object):
 
     def __init__(self):
         # self.unk1 = 0

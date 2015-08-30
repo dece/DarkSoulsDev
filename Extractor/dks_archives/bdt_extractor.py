@@ -1,20 +1,20 @@
 from enum import Enum
 import os
 
-from dks_archives.bhd5 import CombinedExternalArchiveHeader
-from dks_archives.bhf import CombinedInternalArchiveHeader
+from dks_archives.bhd5 import Bhd5
+from dks_archives.bhf import Bhf
 import dks_archives.file_names as file_names
 import dks_archives.file_types as file_types
 import dks_archives.hasher as hasher
 
 
-class CombinedArchiveExtractorMode(Enum):
+class BdtExtractorMode(Enum):
 
     BHD5 = 0
     BHF = 1
 
 
-class CombinedArchiveExtractor(object):
+class BdtExtractor(object):
     """ Extract content from BDT/BHD5 archives. """
 
     def __init__(self, mode):
@@ -29,27 +29,27 @@ class CombinedArchiveExtractor(object):
             self._extract_all_files(data_file)
 
     def _load_header(self, header_file_path):
-        if self.mode == CombinedArchiveExtractorMode.BHD5:
-            self.header = CombinedExternalArchiveHeader()
-        elif self.mode == CombinedArchiveExtractorMode.BHF:
-            self.header = CombinedInternalArchiveHeader()
+        if self.mode == BdtExtractorMode.BHD5:
+            self.header = Bhd5()
+        elif self.mode == BdtExtractorMode.BHF:
+            self.header = Bhf()
         self.header.load_file(header_file_path)
 
     def _extract_all_files(self, data_file):
-        if self.mode == CombinedArchiveExtractorMode.BHD5:
+        if self.mode == BdtExtractorMode.BHD5:
             entries = self.header.data_entries
-        elif self.mode == CombinedArchiveExtractorMode.BHF:
+        elif self.mode == BdtExtractorMode.BHF:
             entries = self.header.entries
 
         for entry in entries:
             self._extract_entry(data_file, entry)
 
     def _extract_entry(self, data_file, entry):
-        if self.mode == CombinedArchiveExtractorMode.BHD5:
+        if self.mode == BdtExtractorMode.BHD5:
             data_file.seek(entry.offset)
             data = data_file.read(entry.size)
             file_name = self._get_full_name(entry, data[:4])
-        elif self.mode == CombinedArchiveExtractorMode.BHF:
+        elif self.mode == BdtExtractorMode.BHF:
             data_file.seek(entry.data_offset)
             data = data_file.read(entry.data_size)
             file_name = entry.name
@@ -62,7 +62,7 @@ class CombinedArchiveExtractor(object):
             name = self.hash_map[file_hash]
         else:
             print("No name for file with hash", file_hash)
-            name = CombinedArchiveExtractor.get_dummy_name(file_hash, magic)
+            name = BdtExtractor.get_dummy_name(file_hash, magic)
         return name
 
     @staticmethod

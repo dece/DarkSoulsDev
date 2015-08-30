@@ -8,7 +8,7 @@ ENTRY_RECORD_BIN = Struct("<2I")
 DATA_ENTRY_BIN = Struct("<4I")
 
 
-class CombinedExternalArchiveHeader(object):
+class Bhd5(object):
     """ BHD5 parser. Some useless elements commented for performance.
 
     To keep all offsets valid, do not modify the entry_records end data_entries
@@ -49,7 +49,7 @@ class CombinedExternalArchiveHeader(object):
         header_file.seek(self.records_offset)
         offset = self.records_offset
         for _ in range(self.num_records):
-            record = EntryRecord()
+            record = Bhd5EntryRecord()
             record.load_record(header_file, offset)
             self.entry_records.append(record)
             offset += ENTRY_RECORD_BIN.size
@@ -58,7 +58,7 @@ class CombinedExternalArchiveHeader(object):
         for entry_record in self.entry_records:
             offset = entry_record.entries_offset
             for _ in range(entry_record.num_entries):
-                data_entry = DataEntry()
+                data_entry = Bhd5DataEntry()
                 data_entry.load_entry(header_file, offset)
                 self.data_entries.append(data_entry)
                 offset += DATA_ENTRY_BIN.size
@@ -105,7 +105,7 @@ class CombinedExternalArchiveHeader(object):
         return entries_data
 
 
-class EntryRecord(object):
+class Bhd5EntryRecord(object):
     """ Entry record, pointing to a bunch of data entries. """
 
     def __init__(self):
@@ -124,7 +124,7 @@ class EntryRecord(object):
         return ENTRY_RECORD_BIN.pack(*data)
 
 
-class DataEntry(object):
+class Bhd5DataEntry(object):
     """ Data entry, describing of to parse the content archive file. """
 
     def __init__(self):

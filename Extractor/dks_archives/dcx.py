@@ -24,8 +24,8 @@ PARAMETERS_BIN = Struct(">I4s6I")
 ZLIB_CONTAINER_BIN = Struct(">2I")
 
 
-class CompressedPackage(object):
-    """ BDT compressed entry parser. Contain infos of the DCX chunk. """
+class Dcx(object):
+    """ DCX parser. """
 
     def __init__(self):
         self.magic = 0
@@ -61,18 +61,18 @@ class CompressedPackage(object):
         assert self.magic == DCX_MAGIC
 
     def _load_sizes(self, data_file):
-        sizes = CompressedPackageSizes()
+        sizes = DcxSizes()
         sizes.load_sizes(data_file, self.dcs_offset)
         self.sizes = sizes
 
     def _load_parameters(self, data_file):
-        parameters = CompressedPackageParameters()
+        parameters = DcxParameters()
         parameters.load_parameters(data_file, self.dcp_offset)
         self.parameters = parameters
 
     def _load_zlib_container(self, data_file):
         dca_offset = self.dcp_offset + self.parameters.dca_offset
-        zlib_container = CompressedPackageZlibContainer()
+        zlib_container = DcxZlibContainer()
         zlib_container.load_infos(data_file, dca_offset)
         self.zlib_container = zlib_container
 
@@ -118,7 +118,7 @@ class CompressedPackage(object):
         return HEADER_BIN.pack(*data)
 
 
-class CompressedPackageSizes(object):
+class DcxSizes(object):
     """ DCS chunk. """
 
     def __init__(self):
@@ -140,7 +140,7 @@ class CompressedPackageSizes(object):
         return SIZES_BIN.pack(*data)
 
 
-class CompressedPackageParameters(object):
+class DcxParameters(object):
     """ DCP chunk. """
 
     def __init__(self):
@@ -174,7 +174,7 @@ class CompressedPackageParameters(object):
         return PARAMETERS_BIN.pack(*data)
 
 
-class CompressedPackageZlibContainer(object):
+class DcxZlibContainer(object):
     """ DCA chunk. """
 
     def __init__(self):
@@ -195,9 +195,10 @@ class CompressedPackageZlibContainer(object):
 
 
 class Compressor(object):
+    """ Generate a DCX file from any other file. """
 
     def __init__(self):
-        self.dcx = CompressedPackage()
+        self.dcx = Dcx()
 
     def compress_file(self, file_to_compress, output_path):
         self._prepare_dcx()
@@ -220,14 +221,14 @@ class Compressor(object):
 
     def _create_sizes(self, uncompressed_file):
         """ Create a valid DCS chunk. """
-        dcx_sizes = CompressedPackageSizes()
+        dcx_sizes = DcxSizes()
         dcx_sizes.magic = DCS_MAGIC
         dcx_sizes.uncompressed_size = os.stat(uncompressed_file).st_size
         dcx_sizes.compressed_size = len(self.dcx.zlib_data)
         self.dcx.sizes = dcx_sizes
 
     def _create_params(self):
-        dcx_params = CompressedPackageParameters()
+        dcx_params = DcxParameters()
         dcx_params.magic = DCP_MAGIC
         dcx_params.method = DCP_METHOD
         dcx_params.dca_offset = PARAMETERS_BIN.size
@@ -236,7 +237,7 @@ class Compressor(object):
         self.dcx.parameters = dcx_params
 
     def _create_zlib_container(self):
-        dcx_zlib_container = CompressedPackageZlibContainer()
+        dcx_zlib_container = DcxZlibContainer()
         dcx_zlib_container.magic = DCA_MAGIC
         dcx_zlib_container.data_offset = DCA_CONST_OFFSET
         self.dcx.zlib_container = dcx_zlib_container

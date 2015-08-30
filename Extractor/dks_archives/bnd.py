@@ -12,7 +12,7 @@ ENTRY_BIN_24 = Struct("<6I")
 ENTRY_BIN_20 = Struct("<5I")
 
 
-class StandaloneArchive(object):
+class Bnd(object):
     """ BND parser. """
 
     FLAGS = {
@@ -60,7 +60,7 @@ class StandaloneArchive(object):
         entry_type = self._determine_entry_type()
         offset = bnd_file.tell()
         for _ in range(self.num_entries):
-            entry = StandaloneArchiveEntry()
+            entry = BndEntry()
             entry.load_entry(bnd_file, offset, entry_type)
             self.entries.append(entry)
             offset += entry_type.size
@@ -70,7 +70,7 @@ class StandaloneArchive(object):
             error_message = "Unknown BndHeader.infos: {}".format(self.flags)
             raise NotImplementedError(error_message)
 
-        if self.flags & StandaloneArchive.FLAGS["USE_24_BYTES_STRUCT"]:
+        if self.flags & Bnd.FLAGS["USE_24_BYTES_STRUCT"]:
             return ENTRY_BIN_24
         else:
             return ENTRY_BIN_20
@@ -92,7 +92,7 @@ class StandaloneArchive(object):
             file_entry.extract_entry(full_path)
 
 
-class StandaloneArchiveEntry(object):
+class BndEntry(object):
     """ BND file entry, containing file name and data.
 
     Attributes:
@@ -165,7 +165,7 @@ class StandaloneArchiveEntry(object):
             output_file.write(self.file_data)
 
 
-class StandaloneArchiveCreator(object):
+class BndCreator(object):
     """ Create a BND file from various files. """
 
     def __init__(self):
@@ -211,10 +211,10 @@ class StandaloneArchiveCreator(object):
 
     def _generate_bnd_header(self, files_offset):
         magic = SOME_BND_MAGIC
-        flags = ( StandaloneArchive.FLAGS["USE_24_BYTES_STRUCT"]
-                | StandaloneArchive.FLAGS["UNK5"]
-                | StandaloneArchive.FLAGS["UNK6"]
-                | StandaloneArchive.FLAGS["UNK7"] )
+        flags = ( Bnd.FLAGS["USE_24_BYTES_STRUCT"]
+                | Bnd.FLAGS["UNK5"]
+                | Bnd.FLAGS["UNK6"]
+                | Bnd.FLAGS["UNK7"] )
         num_entries = len(self.entries)
         data_offset = files_offset
 
@@ -249,7 +249,7 @@ class StandaloneArchiveCreator(object):
         string block and files data block respectively, and need to be shifted
         later to have their correct absolute value.
         """
-        entry = StandaloneArchiveEntry()
+        entry = BndEntry()
         entry.unk1 = 0x40  # general default value
         entry.ident = self._get_next_ident()
         self._register_entry_name(entry, virtual_file_path)
