@@ -1,9 +1,9 @@
-Dark Souls Dev
-==============
+DarkSoulsDev repository
+=======================
+
+Code to go with the [DSdev file format documentation][doc].
 
 Not much to see here at the moment.
-
-For more info, [here is all file format documentation][doc] I could gather.
 
 
 
