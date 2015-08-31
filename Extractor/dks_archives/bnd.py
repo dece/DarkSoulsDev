@@ -183,6 +183,7 @@ class BndCreator(object):
             bnd_file.write(bnd_data)
 
     def _generate_bnd_data(self):
+        _, unpadded_files_offset = self._get_blocks_offset()
         self._pad_blocks()
         strings_data = self.strings_data
         files_data = self.files_data
@@ -190,7 +191,7 @@ class BndCreator(object):
         strings_offset, files_offset = self._get_blocks_offset()
         entries_data = self._generate_bnd_entries(strings_offset, files_offset)
 
-        header_data = self._generate_bnd_header(files_offset)
+        header_data = self._generate_bnd_header(unpadded_files_offset)
 
         bnd_data = header_data + entries_data + strings_data + files_data
         return bnd_data
