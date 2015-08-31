@@ -1,8 +1,9 @@
 import os
 from struct import Struct
 
-from shgck_tools.bin import read_cstring, pad_data
 import dks_archives.file_names as file_names
+
+from shgck_tools.bin import read_cstring, read_struct, pad_data
 
 
 SOME_BND_MAGIC = b"BND307D7R6\x00\x00"
@@ -46,8 +47,7 @@ class Bnd(object):
 
     def _load_header(self, bnd_file):
         bnd_file.seek(0)
-        data = bnd_file.read(HEADER_BIN.size)
-        unpacked = HEADER_BIN.unpack(data)
+        unpacked = read_struct(bnd_file, HEADER_BIN)
         self.magic = unpacked[0]
         self.flags = unpacked[1]
         self.num_entries = unpacked[2]
@@ -57,15 +57,16 @@ class Bnd(object):
 
     def _load_entries(self, bnd_file):
         bnd_file.seek(HEADER_BIN.size)
-        entry_type = self._determine_entry_type()
+        entry_struct = self._determine_entry_type()
         offset = bnd_file.tell()
         for _ in range(self.num_entries):
             entry = BndEntry()
-            entry.load_entry(bnd_file, offset, entry_type)
+            entry.load_entry(bnd_file, offset, entry_struct)
             self.entries.append(entry)
-            offset += entry_type.size
+            offset += entry_struct.size
 
     def _determine_entry_type(self):
+        """ Return a corresponding Struct for this type of entry. """
         if self.flags not in [0x54, 0x70, 0x74]:
             error_message = "Unknown BndHeader.infos: {}".format(self.flags)
             raise NotImplementedError(error_message)
@@ -122,10 +123,9 @@ class BndEntry(object):
             self.ident, self.data_size, self.data_offset, self.file_name
         )
 
-    def load_entry(self, bnd_file, offset, entry_type):
+    def load_entry(self, bnd_file, offset, entry_struct):
         bnd_file.seek(offset)
-        data = bnd_file.read(entry_type.size)
-        unpacked = entry_type.unpack(data)
+        unpacked = read_struct(bnd_file, entry_struct)
         self.unk1 = unpacked[0]
         self.data_size = unpacked[1]
         self.data_offset = unpacked[2]

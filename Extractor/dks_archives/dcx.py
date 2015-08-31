@@ -4,6 +4,8 @@ import zlib
 
 import dks_archives.file_names as file_names
 
+from shgck_tools.bin import read_struct
+
 
 DCX_MAGIC = 0x44435800
 DCX_CONST_UNK1 = 0x00010000
@@ -40,18 +42,17 @@ class Dcx(object):
         self.zlib_container = None
         self.zlib_data = None
 
-    def load_file(self, compressed_file_path):
-        with open(compressed_file_path, "rb") as data_file:
-            self._load_header(data_file)
-            self._load_sizes(data_file)
-            self._load_parameters(data_file)
-            self._load_zlib_container(data_file)
-            self._load_zlib_data(data_file)
+    def load_file(self, dcx_file_path):
+        with open(dcx_file_path, "rb") as dcx_file:
+            self._load_header(dcx_file)
+            self._load_sizes(dcx_file)
+            self._load_parameters(dcx_file)
+            self._load_zlib_container(dcx_file)
+            self._load_zlib_data(dcx_file)
 
-    def _load_header(self, data_file):
-        data_file.seek(0)
-        data = data_file.read(HEADER_BIN.size)
-        unpacked = HEADER_BIN.unpack(data)
+    def _load_header(self, dcx_file):
+        dcx_file.seek(0)
+        unpacked = read_struct(dcx_file, HEADER_BIN)
         self.magic = unpacked[0]
         self.unk1 = unpacked[1]
         self.dcs_offset = unpacked[2]
@@ -60,26 +61,26 @@ class Dcx(object):
         self.unk3 = unpacked[5]
         assert self.magic == DCX_MAGIC
 
-    def _load_sizes(self, data_file):
+    def _load_sizes(self, dcx_file):
         sizes = DcxSizes()
-        sizes.load_sizes(data_file, self.dcs_offset)
+        sizes.load_sizes(dcx_file, self.dcs_offset)
         self.sizes = sizes
 
-    def _load_parameters(self, data_file):
+    def _load_parameters(self, dcx_file):
         parameters = DcxParameters()
-        parameters.load_parameters(data_file, self.dcp_offset)
+        parameters.load_parameters(dcx_file, self.dcp_offset)
         self.parameters = parameters
 
-    def _load_zlib_container(self, data_file):
+    def _load_zlib_container(self, dcx_file):
         dca_offset = self.dcp_offset + self.parameters.dca_offset
         zlib_container = DcxZlibContainer()
-        zlib_container.load_infos(data_file, dca_offset)
+        zlib_container.load_infos(dcx_file, dca_offset)
         self.zlib_container = zlib_container
 
-    def _load_zlib_data(self, data_file):
+    def _load_zlib_data(self, dcx_file):
         zlib_offset = self._get_zlib_offset()
-        data_file.seek(zlib_offset)
-        zlib_data = data_file.read(self.sizes.compressed_size)
+        dcx_file.seek(zlib_offset)
+        zlib_data = dcx_file.read(self.sizes.compressed_size)
         self.zlib_data = zlib_data
 
     def _get_zlib_offset(self):
@@ -126,10 +127,9 @@ class DcxSizes(object):
         self.uncompressed_size = 0
         self.compressed_size = 0
 
-    def load_sizes(self, data_file, dcs_offset):
-        data_file.seek(dcs_offset)
-        data = data_file.read(SIZES_BIN.size)
-        unpacked = SIZES_BIN.unpack(data)
+    def load_sizes(self, dcx_file, dcs_offset):
+        dcx_file.seek(dcs_offset)
+        unpacked = read_struct(dcx_file, SIZES_BIN)
         self.magic = unpacked[0]
         self.uncompressed_size = unpacked[1]
         self.compressed_size = unpacked[2]
@@ -153,10 +153,9 @@ class DcxParameters(object):
         self.unk4 = 0
         self.unk5 = 0
 
-    def load_parameters(self, data_file, dcp_offset):
-        data_file.seek(dcp_offset)
-        data = data_file.read(PARAMETERS_BIN.size)
-        unpacked = PARAMETERS_BIN.unpack(data)
+    def load_parameters(self, dcx_file, dcp_offset):
+        dcx_file.seek(dcp_offset)
+        unpacked = read_struct(dcx_file, PARAMETERS_BIN)
         self.magic = unpacked[0]
         self.method = unpacked[1]
         self.dca_offset = unpacked[2]
@@ -181,10 +180,9 @@ class DcxZlibContainer(object):
         self.magic = 0
         self.data_offset = 0
 
-    def load_infos(self, data_file, dca_offset):
-        data_file.seek(dca_offset)
-        data = data_file.read(ZLIB_CONTAINER_BIN.size)
-        unpacked = ZLIB_CONTAINER_BIN.unpack(data)
+    def load_infos(self, dcx_file, dca_offset):
+        dcx_file.seek(dca_offset)
+        unpacked = read_struct(dcx_file, ZLIB_CONTAINER_BIN)
         self.magic = unpacked[0]
         self.data_offset = unpacked[1]
         assert self.magic == DCA_MAGIC

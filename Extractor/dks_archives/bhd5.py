@@ -1,5 +1,7 @@
 from struct import Struct
 
+from shgck_tools.bin import read_struct
+
 
 BHD5_MAGIC = 0x35444842
 
@@ -35,8 +37,7 @@ class Bhd5(object):
 
     def _load_header(self, header_file):
         header_file.seek(0)
-        data = header_file.read(HEADER_BIN.size)
-        unpacked = HEADER_BIN.unpack(data)
+        unpacked = read_struct(header_file, HEADER_BIN)
         self.magic = unpacked[0]
         self.unk1 = unpacked[1]
         self.unk2 = unpacked[2]
@@ -114,8 +115,7 @@ class Bhd5EntryRecord(object):
 
     def load_record(self, header_file, offset):
         header_file.seek(offset)
-        data = header_file.read(ENTRY_RECORD_BIN.size)
-        unpacked = ENTRY_RECORD_BIN.unpack(data)
+        unpacked = read_struct(header_file, ENTRY_RECORD_BIN)
         self.num_entries = unpacked[0]
         self.entries_offset = unpacked[1]
 
@@ -140,8 +140,7 @@ class Bhd5DataEntry(object):
 
     def load_entry(self, header_file, offset):
         header_file.seek(offset)
-        data = header_file.read(DATA_ENTRY_BIN.size)
-        unpacked = DATA_ENTRY_BIN.unpack(data)
+        unpacked = read_struct(header_file, DATA_ENTRY_BIN)
         self.hash = unpacked[0]
         self.size = unpacked[1]
         self.offset = unpacked[2]

@@ -1,6 +1,6 @@
 from struct import Struct
 
-from shgck_tools.bin import read_cstring
+from shgck_tools.bin import read_cstring, read_struct
 
 
 BHD5_MAGIC = 0x33464842
@@ -28,8 +28,7 @@ class Bhf(object):
 
     def _load_header(self, bhf_file):
         bhf_file.seek(0)
-        data = bhf_file.read(HEADER_BIN.size)
-        unpacked = HEADER_BIN.unpack(data)
+        unpacked = read_struct(bhf_file, HEADER_BIN)
         self.magic = unpacked[0]
         # self.unk1 = unpacked[1]
         self.num_entries = unpacked[2]
