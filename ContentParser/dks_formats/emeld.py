@@ -6,7 +6,7 @@ from shgck_tools.bin import read_cstring, read_struct
 EMELD_MAGIC = b"ELD\x00"
 
 HEADER_BIN = Struct("<4sI2H11I")
-ENTRY_BIN = Struct("<2H2I")
+ENTRY_BIN = Struct("<3I")
 
 
 class Emeld(object):
@@ -74,16 +74,15 @@ class Emeld(object):
 
     def print_entries(self):
         for entry in self.entries:
-            print(entry.ident, entry.unk2, ":", entry.string)
+            print(entry.ident, ":", entry.string)
 
 
 class EmeldEntry(object):
 
     def __init__(self):
         self.ident = 0
-        self.unk2 = 0
         self.data_offset = 0
-        self.unk3 = 0
+        self.unk = 0
 
         self.data = b""
         self.string = ""
@@ -92,9 +91,8 @@ class EmeldEntry(object):
         emeld_file.seek(offset)
         unpacked = read_struct(emeld_file, ENTRY_BIN)
         self.ident = unpacked[0]
-        self.unk2 = unpacked[1]
-        self.data_offset = unpacked[2]
-        self.unk3 = unpacked[3]
+        self.data_offset = unpacked[1]
+        self.unk = unpacked[2]
 
     def decode_data(self):
         try:
