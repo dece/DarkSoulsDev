@@ -25,3 +25,8 @@ def rename_with_fitting_extension(path):
     extension = file_types.get_dummy_extension_from_data(magic)
     new_name = os.path.splitext(path)[0] + "." + extension
     os.rename(path, new_name)
+
+
+def absolute_to_relative(path, relative_root = None):
+    """ Convert an absolute Windows file name to a joinable relative one. """
+    
