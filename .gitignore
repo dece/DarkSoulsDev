@@ -1,7 +1,9 @@
 build/
 Extracted*/
+Reverse/
 Samples/
 Tools/
 *.lnk
 *.7z
 *.rar
+*.sublime-*
