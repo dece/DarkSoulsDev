@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 output_dir = r"F:\Dev\Projets\DarkSoulsDev\ExtractedSounds"
@@ -6,7 +7,7 @@ output_dir = r"F:\Dev\Projets\DarkSoulsDev\ExtractedSounds"
 extensions = {}
 
 
-for root, dirs, files in os.walk(output_dir):
+for root, dirs, files in os.walk(sys.argv[1]):
     for file_name in files:
         ext = os.path.splitext(file_name)[1]
         ext = ext.lstrip(".")
