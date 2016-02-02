@@ -1,9 +1,7 @@
 build/
-Extracted*/
+Ressources/External Tools/
+Ressources/Samples/
 Reverse/
-Samples/
-Tools/
-*.lnk
 *.7z
-*.rar
+*.lnk
 *.sublime-*
