@@ -4,6 +4,7 @@ from pyshgck.bin import read_struct
 
 
 class Bhd(object):
+    """ Describe a BHD5 file. """
 
     def __init__(self):
         self.header = None
