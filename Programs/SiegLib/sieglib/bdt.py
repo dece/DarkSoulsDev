@@ -1,7 +1,9 @@
+from sieglib.log import LOG
+
 
 class Bdt(object):
     """ Describe a BDT file. Do not load the whole file in memory as they can
-    weight several GB, load a  """
+    weight several GB, just open the file in whatever mode you need. """
 
     MAGIC      = 0x33464442  # BDF3
     FULL_MAGIC = b"\x42\x44\x46\x33\x30\x37\x44\x37\x52\x36" + b"\x00"*6
@@ -14,9 +16,13 @@ class Bdt(object):
         if self.opened:
             self.close()
 
-    def open(self, file_path):
-        self.bdt_file = open(file_path, "rb")
+    def open(self, file_path, mode = "rb"):
+        self.bdt_file = open(file_path, mode)
         self.opened = True
+
+    def close(self):
+        self.bdt_file.close()
+        self.opened = False
 
     def read_entry(self, position, size):
         assert self.opened
@@ -24,6 +30,26 @@ class Bdt(object):
         content = self.bdt_file.read(size)
         return content
 
-    def close(self):
-        self.bdt_file.close()
-        self.opened = False
+    def make_header(self):
+        assert self.opened
+        self.bdt_file.seek(0)
+        self.bdt_file.write(Bdt.FULL_MAGIC)
+
+    def import_file(self, file_path):
+        position = self.bdt_file.tell()
+        try:
+            with open(file_path, "rb") as input_file:
+                file_content = input_file.read()
+            num_written = self.bdt_file.write(file_content)
+
+            # Pad the BDT file to 16-byte.
+            end_position = position + num_written
+            pad_size = 16 - (end_position % 16)
+            self.bdt_file.write(b"\x00" * pad_size)
+        except OSError as exc:
+            LOG.error("Error while trying to import {}: {}".format(
+                file_path, exc
+            ))
+            return None
+        else:
+            return position, num_written
