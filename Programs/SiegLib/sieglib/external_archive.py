@@ -1,25 +1,42 @@
 import json
 import os
+import re
 
 from sieglib.bdt import Bdt
-from sieglib.bhd import Bhd
+from sieglib.bhd import Bhd, BhdDataEntry
 from sieglib.filelist import load_filelist
 from sieglib.log import LOG
 from pyshgck.time import time_it
 
 
 class ExternalArchive(object):
-    """ Combination of BHD and BDT. """
+    """ Combination of BHD and BDT. Contains methods to extract files to the
+    filesystem and to generate them from a directory tree.
+
+    Attributes:
+    - bhd: Bhd object
+    - bdt: Bdt object
+    - filelist: dict which maps hashes to the original string
+    - records_map: dict which maps record indices to the file names they contain
+    """
+
+    # Do not handle these files when crafting an archive.
+    SPECIAL_FILE_TYPES = (".json",)
+
+    # Files without a known name are named by their uppercase hex hash.
+    UNNAMED_FILE_RE = re.compile(r"[0-9A-F]{8}")
 
     def __init__(self):
         self.bhd = None
         self.bdt = None
         self.filelist = {}
+        self.records_map = {}
 
     def reset(self):
         self.bhd = Bhd()
         self.bdt = Bdt()
         self.filelist = {}
+        self.records_map = {}
 
     def load(self, bhd_name):
         self.reset()
@@ -30,24 +47,36 @@ class ExternalArchive(object):
     def load_filelist(self, hashmap_path):
         self.filelist = load_filelist(hashmap_path)
 
+    def load_records_map(self, map_path):
+        """ Load the archive's records map, return True on success. """
+        if not os.path.isfile(map_path):
+            LOG.error("Records map file can't be found.")
+            return False
+        with open(map_path, "r") as records_map_file:
+            self.records_map = json.load(records_map_file)
+        return True
+
+    #------------------------------
+    # Extraction
+    #------------------------------
+
     @time_it(LOG)
     def extract_all_files(self, output_dir):
-        records_map = {}
+        self.records_map = {}
         for index, record in enumerate(self.bhd.records):
             record_files = []
             for entry in record.entries:
                 file_name = self.extract_file(entry, output_dir)
                 if file_name:
                     record_files.append(file_name)
-            records_map[index] = record_files
-        ExternalArchive._save_records_map(records_map, output_dir)
+            self.records_map[index] = record_files
+        self._save_records_map(output_dir)
 
-    @staticmethod
-    def _save_records_map(records_map, output_dir):
+    def _save_records_map(self, output_dir):
         """ Write the JSON map of records to their entries. """
         records_map_path = os.path.join(output_dir, "records.json")
         with open(records_map_path, "w") as records_map_file:
-            json.dump(records_map, records_map_file)
+            json.dump(self.records_map, records_map_file)
 
     def extract_file(self, entry, output_dir):
         """ Extract the file corresponding to that BHD data entry, return the
@@ -82,5 +111,73 @@ class ExternalArchive(object):
                 return True
         return False
 
-    def import_data_dir(self, data_dir):
+    #------------------------------
+    # Import
+    #------------------------------
+
+    @time_it(LOG)
+    def import_files(self, data_dir, bhd_path):
+        """ Create an external archive from the data in data_dir, return True on
+        success. """
+        self.reset()
+        self._prepare_files_for_import(bhd_path)
+
+        records_map_path = os.path.join(data_dir, "records.json")
+        records_map_is_loaded = self.load_records_map(records_map_path)
+        if not records_map_is_loaded:
+            return False
+
+        for root, _, files in os.walk(data_dir):
+            for file_name in files:
+                ext = os.path.splitext(file_name)[1]
+                if ext in self.SPECIAL_FILE_TYPES:
+                    continue
+
+                self.import_file(data_dir, root, file_name)
+
+        return True
+
+    def _prepare_files_for_import(self, bhd_path):
+        bdt_path = os.path.splitext(bhd_path)[0] + ".bdt"
+        self.bdt.open(bdt_path, "wb")
+        self.bdt.make_header()
+
+    def import_file(self, data_dir, file_dir, file_name):
+        """ Try to import the file file_name in file_dir, with data_dir as the
+        archive root; create a data entry in the appropriate record, and write
+        the file data in the BDT file. Return True on success. """
+        file_path = os.path.join(file_dir, file_name)
+
+        # Find rel_path: either a hashable name like "/chr/c5352.anibnd.dcx"
+        # or directly a hash name like "192E66A4".
+        # Create a data entry hash with an appropriate value at the same time.
+        is_unnamed = self.UNNAMED_FILE_RE.match(file_name) is None
+        if is_unnamed:
+            rel_path = ExternalArchive._get_rel_path(data_dir, file_path)
+            rel_path = "/" + rel_path
+            entry_hash = int(file_name, 16)
+        else:
+            rel_path = file_name
+            entry_hash = BhdDataEntry.hash_name(rel_path)
+
+        data_entry = BhdDataEntry()
+        data_entry.hash = entry_hash
+
+        file_values = self.bdt.import_file(file_path)
+        data_entry.position, data_entry.size = file_values
+        if data_entry.size == -1:
+            return False
+
+        self._update_record(data_entry)
+        return True
+
+    @staticmethod
+    def _get_rel_path(data_dir, file_path):
+        """ Return the sanitized relative path of file_path. """
+        relative_path = os.path.relpath(file_path, data_dir)
+        # Invert backslashes on Windows
+        relative_path = relative_path.replace(os.path.sep, "/")
+        return relative_path
+
+    def _update_record(self, data_entry):
         pass
