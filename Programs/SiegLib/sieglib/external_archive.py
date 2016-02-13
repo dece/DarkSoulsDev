@@ -1,3 +1,4 @@
+import json
 import os
 
 from sieglib.bdt import Bdt
@@ -31,16 +32,29 @@ class ExternalArchive(object):
 
     @time_it(LOG)
     def extract_all_files(self, output_dir):
-        for record in self.bhd.records:
+        records_map = {}
+        for index, record in enumerate(self.bhd.records):
+            record_files = []
             for entry in record.entries:
-                self.extract_file(entry, output_dir)
+                file_name = self.extract_file(entry, output_dir)
+                if file_name:
+                    record_files.append(file_name)
+            records_map[index] = record_files
+        ExternalArchive._save_records_map(records_map, output_dir)
+
+    @staticmethod
+    def _save_records_map(records_map, output_dir):
+        """ Write the JSON map of records to their entries. """
+        records_map_path = os.path.join(output_dir, "records.json")
+        with open(records_map_path, "w") as records_map_file:
+            json.dump(records_map, records_map_file)
 
     def extract_file(self, entry, output_dir):
-        """ Extract the file corresponding to that BHD data entry, return True
-        on success. """
+        """ Extract the file corresponding to that BHD data entry, return the
+        relative file path on success, None on failure """
         if not self.is_entry_valid(entry):
             LOG.error("Tried to extract a file not from this archive.")
-            return False
+            return None
 
         file_name = self.filelist.get(entry.hash) or "{:08X}".format(entry.hash)
         LOG.info("Extracting {}".format(file_name))
@@ -52,14 +66,14 @@ class ExternalArchive(object):
                        "(file '{}')".format(
                 entry.size, content_len, file_name
             ))
-            return False
+            return None
 
         output_path = os.path.join(output_dir, file_name.lstrip("/"))
         if not os.path.isdir(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         with open(output_path, "wb") as output_file:
             output_file.write(file_content)
-        return True
+        return file_name
 
     def is_entry_valid(self, entry):
         """ Return True if that BhdDataEntry is part of this archive. """
