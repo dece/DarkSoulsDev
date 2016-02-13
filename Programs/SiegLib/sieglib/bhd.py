@@ -87,6 +87,11 @@ class BhdDataEntry(object):
         self.offset = 0
         self.unk = 0
 
+    def __str__(self):
+        return "Entry [{:08} bytes @ 0x{:08X}], hash {:08X}".format(
+            self.size, self.offset, self.hash
+        )
+
     def load(self, header_file):
         data = read_struct(header_file, self.DATA_ENTRY_BIN)
         self.hash   = data[0]
@@ -94,25 +99,24 @@ class BhdDataEntry(object):
         self.offset = data[2]
         self.unk    = data[3]
 
-    def __str__(self):
-        return "Entry [{:08} bytes @ 0x{:08X}], hash {:08X}".format(
-            self.size, self.offset, self.hash
-        )
+    @staticmethod
+    def hash_name(characters):
+        """ Hash that string. """
+        full_hash = BhdDataEntry._get_hash_value(characters)
+        bhd_hash = BhdDataEntry._truncate_hash(full_hash)
+        return bhd_hash
 
+    @staticmethod
+    def _get_hash_value(characters):
+        """ Get the full hash value for this string. """
+        characters = characters.lower()
+        hash_value = 0
+        for character in characters:
+            hash_value *= 37
+            hash_value += ord(character)
+        return hash_value
 
-def bhd_hash(characters):
-    """ Get a BHD hash from this string. """
-    return _truncate_hash(_get_hash_value(characters))
-
-def _get_hash_value(characters):
-    """ Get the full hash value for this string. """
-    characters = characters.lower()
-    hash_value = 0
-    for character in characters:
-        hash_value *= 37
-        hash_value += ord(character)
-    return hash_value
-
-def _truncate_hash(hash_value):
-    """ Truncate a hash value to an uint32. """
-    return hash_value % 2**32
+    @staticmethod
+    def _truncate_hash(hash_value):
+        """ Truncate a hash value to an uint32. """
+        return hash_value % 2**32

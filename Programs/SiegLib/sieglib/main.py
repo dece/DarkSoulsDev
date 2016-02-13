@@ -1,7 +1,6 @@
-import json
 import os
 
-from sieglib.bhd import Bhd
+from sieglib.external_archive import ExternalArchive
 
 
 GAME_DIR = r"F:\Jeux\Steam\SteamApps\common\Dark Souls Prepare to Die Edition"
@@ -12,19 +11,16 @@ RESOURCES_DIR        = r"F:\Dev\Projets\DarkSoulsDev\Ressources"
 FILELISTS_DIR        = os.path.join(RESOURCES_DIR, "Filelists")
 DVDBND0_HASHMAP_PATH = os.path.join(FILELISTS_DIR, "dvdbnd0.hashmap.json")
 
+WORKSPACE_DIR = r"F:\Dev\Projets\DarkSoulsDev\Workspace"
+
 
 def main():
-    bhd = Bhd()
-    bhd.load(BHD_PATH)
+    archive = ExternalArchive()
+    archive.load(BHD_PATH)
+    archive.load_filelist(DVDBND0_HASHMAP_PATH)
 
-    with open(DVDBND0_HASHMAP_PATH, "r") as dvdbnd0_hashmap:
-        hashmap = json.load(dvdbnd0_hashmap)
-    hashmap = { int(k, 16): hashmap[k] for k in hashmap.keys() }
-
-    for record_index, record in enumerate(bhd.records):
-        print("Record #{}".format(record_index))
-        for data_entry in record.entries:
-            print(hashmap.get(data_entry.hash, ";("))
+    first_entry = archive.bhd.records[14].entries[0]
+    archive.extract_all_files(WORKSPACE_DIR + "/RootFiles/0/")
 
 
 if __name__ == "__main__":
