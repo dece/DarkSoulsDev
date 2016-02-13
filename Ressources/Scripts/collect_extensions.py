@@ -1,20 +1,30 @@
+""" List the number of file for each extension in a directory tree. """
+
+import argparse
 import os
-import sys
 
 
-output_dir = r"F:\Dev\Projets\DarkSoulsDev\ExtractedSounds"
+def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("dir", type = str)
+    args = argparser.parse_args()
 
-extensions = {}
+    if os.path.isdir(args.dir):
+        print_extensions(args.dir)
 
+def print_extensions(directory):
+    extensions = {}
+    for _, _, files in os.walk(directory):
+        for file_name in files:
+            ext = os.path.splitext(file_name)[1]
+            ext = ext.lstrip(".")
+            if ext in extensions:
+                extensions[ext] += 1
+            else:
+                extensions[ext] = 1
 
-for root, dirs, files in os.walk(sys.argv[1]):
-    for file_name in files:
-        ext = os.path.splitext(file_name)[1]
-        ext = ext.lstrip(".")
-        if ext in extensions:
-            extensions[ext] += 1
-        else:
-            extensions[ext] = 0
+    for ext in sorted(list(extensions.keys())):
+        print(ext or "<no extension>", ":", extensions[ext])
 
-for ext in sorted(list(extensions.keys())):
-    print(ext, ":", extensions[ext])
+if __name__ == "__main__":
+    main()

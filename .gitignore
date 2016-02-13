@@ -2,6 +2,7 @@ build/
 Ressources/External Tools/
 Ressources/Samples/
 Reverse/
+Workspace/
 *.7z
 *.lnk
 *.sublime-*
