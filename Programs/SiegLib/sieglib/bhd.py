@@ -69,6 +69,7 @@ class BhdRecord(object):
         header_file.seek(saved_position)
 
     def _load_data_entries(self, header_file, num_entries, offset):
+        """ Load all data entries associated with that record. """
         header_file.seek(offset)
         self.entries = [None] * num_entries
         for index in range(num_entries):
@@ -93,6 +94,7 @@ class BhdDataEntry(object):
         )
 
     def load(self, header_file):
+        """ Load a BHD data entry. """
         data = read_struct(header_file, self.DATA_ENTRY_BIN)
         self.hash   = data[0]
         self.size   = data[1]

@@ -26,5 +26,6 @@ def print_extensions(directory):
     for ext in sorted(list(extensions.keys())):
         print(ext or "<no extension>", ":", extensions[ext])
 
+
 if __name__ == "__main__":
     main()
