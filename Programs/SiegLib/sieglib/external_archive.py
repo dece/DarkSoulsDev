@@ -13,6 +13,10 @@ class ExternalArchive(object):
     """ Combination of BHD and BDT. Contains methods to extract files to the
     filesystem and to generate them from a directory tree.
 
+    An ExternalArchive object is unusable when instantiated; use the function
+    'reset' to create an empty one, or the functions 'load' or 'import_files' to
+    populate it.
+
     Attributes:
     - bhd: Bhd object
     - bdt: Bdt object
@@ -85,24 +89,24 @@ class ExternalArchive(object):
             LOG.error("Tried to extract a file not from this archive.")
             return None
 
-        file_name = self.filelist.get(entry.hash) or "{:08X}".format(entry.hash)
-        LOG.info("Extracting {}".format(file_name))
+        rel_path = self.filelist.get(entry.hash) or "{:08X}".format(entry.hash)
+        LOG.info("Extracting {}".format(rel_path))
 
         file_content = self.bdt.read_entry(entry.offset, entry.size)
         content_len = len(file_content)
         if content_len != entry.size:
             LOG.error( "Tried to read {} bytes but only {} were available "
                        "(file '{}').".format(
-                entry.size, content_len, file_name
+                entry.size, content_len, rel_path
             ))
             return None
 
-        output_path = os.path.join(output_dir, file_name.lstrip("/"))
+        output_path = os.path.join(output_dir, rel_path.lstrip("/"))
         if not os.path.isdir(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         with open(output_path, "wb") as output_file:
             output_file.write(file_content)
-        return file_name
+        return rel_path
 
     def is_entry_valid(self, entry):
         """ Return True if that BhdDataEntry is part of this archive. """
