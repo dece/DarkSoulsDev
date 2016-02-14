@@ -27,6 +27,27 @@ class Bhd(object):
             record.load(header_file)
             self.records[index] = record
 
+    def save(self, file_path):
+        """ Save the BHD to disk. """
+        with open(file_path, "wb") as header_file:
+            self.header.save(header_file)
+            self._save_records(header_file)
+            self._save_data_entries(header_file)
+
+    def _save_records(self, file_object):
+        """ Save each record with an appropriate data offset. """
+        offset = ( self.header.records_offset +
+                   len(self.records) * BhdRecord.RECORD_BIN.size )
+        for record in self.records:
+            record.save(offset, file_object)
+            offset += len(record.entries) * BhdDataEntry.DATA_ENTRY_BIN.size
+
+    def _save_data_entries(self, file_object):
+        """ Save each data entry of each record. """
+        for record in self.records:
+            for entry in record.entries:
+                entry.save(file_object)
+
 
 class BhdHeader(object):
 
@@ -34,15 +55,14 @@ class BhdHeader(object):
     HEADER_BIN = Struct("<6I")
 
     def __init__(self):
-        self.magic = 0
-        self.unk1 = 0
-        self.unk2 = 0
+        self.magic = self.MAGIC
+        self.unk1 = 0xFF
+        self.unk2 = 0x01
         self.file_size = 0
         self.num_records = 0
-        self.records_offset = 0
+        self.records_offset = self.HEADER_BIN.size
 
     def load(self, header_file):
-        """ Read BHD header data. """
         header_file.seek(0)
         unpacked = read_struct(header_file, self.HEADER_BIN)
         self.magic          = unpacked[0]
@@ -52,6 +72,13 @@ class BhdHeader(object):
         self.num_records    = unpacked[4]
         self.records_offset = unpacked[5]
         assert self.magic == self.MAGIC
+
+    def save(self, file_object):
+        data = self.HEADER_BIN.pack(
+            self.magic, self.unk1, self.unk2,
+            self.file_size, self.num_records, self.records_offset
+        )
+        file_object.write(data)
 
 
 class BhdRecord(object):
@@ -77,6 +104,10 @@ class BhdRecord(object):
             data_entry.load(header_file)
             self.entries[index] = data_entry
 
+    def save(self, offset, file_object):
+        data = self.RECORD_BIN.pack(len(self.entries), offset)
+        file_object.write(data)
+
 
 class BhdDataEntry(object):
 
@@ -100,6 +131,12 @@ class BhdDataEntry(object):
         self.size   = data[1]
         self.offset = data[2]
         self.unk    = data[3]
+
+    def save(self, file_object):
+        data = self.DATA_ENTRY_BIN.pack(
+            self.hash, self.size, self.offset, self.unk
+        )
+        file_object.write(data)
 
     @staticmethod
     def hash_name(characters):

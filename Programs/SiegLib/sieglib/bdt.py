@@ -50,6 +50,6 @@ class Bdt(object):
             LOG.error("Error while trying to import {}: {}".format(
                 file_path, exc
             ))
-            return None
+            return position, -1
         else:
             return position, num_written

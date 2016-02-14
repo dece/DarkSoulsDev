@@ -22,11 +22,11 @@ def main():
         bhd_name = "dvdbnd{}.bhd5".format(index)
         archive_bhd_path = os.path.join(WORKSPACE_DIR, bhd_name)
         archive_workspace = os.path.join(WORKSPACE_DIR, "RootFiles", str(index))
-        
+
         # archive.load(BHD_PATH.format(index))
         # archive.load_filelist(DVDBND_HASHMAP_PATH.format(index))
         # archive.extract_all_files(WORKSPACE_DIR + "/RootFiles/" + str(index))
-        
+
         archive.import_files(archive_workspace, archive_bhd_path)
 
 
