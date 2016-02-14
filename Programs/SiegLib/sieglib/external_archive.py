@@ -4,6 +4,7 @@ import re
 
 from sieglib.bdt import Bdt
 from sieglib.bhd import Bhd, BhdHeader, BhdRecord, BhdDataEntry
+from sieglib.dcx import Dcx
 from sieglib.filelist import load_filelist
 from sieglib.log import LOG
 from pyshgck.time import time_it
@@ -33,14 +34,16 @@ class ExternalArchive(object):
     def __init__(self):
         self.bhd = None
         self.bdt = None
-        self.filelist = {}
-        self.records_map = {}
+        self.filelist = None
+        self.records_map = None
+        self.decompressed_list = None
 
     def reset(self):
         self.bhd = Bhd()
         self.bdt = Bdt()
         self.filelist = {}
         self.records_map = {}
+        self.decompressed_list = []
 
     def load(self, bhd_name):
         self.reset()
@@ -52,7 +55,8 @@ class ExternalArchive(object):
         self.filelist = load_filelist(hashmap_path)
 
     def load_records_map(self, map_path):
-        """ Load the archive's records map, return True on success. """
+        """ Load the archive's records map that will be used to generate an
+        archive with original record-to-entries map, return True on success. """
         if not os.path.isfile(map_path):
             LOG.error("Records map file can't be found.")
             return False
@@ -60,27 +64,49 @@ class ExternalArchive(object):
             self.records_map = json.load(records_map_file)
         return True
 
+    def save_records_map(self, output_dir):
+        """ Write the JSON map of records to their entries. """
+        records_map_path = os.path.join(output_dir, "records.json")
+        with open(records_map_path, "w") as records_map_file:
+            json.dump(self.records_map, records_map_file)
+
+    def save_decompressed_list(self, output_dir):
+        """ Write the JSON list of files (relative path) decompressed. """
+        list_path = os.path.join(output_dir, "decompressed.json")
+        with open(list_path, "w") as list_file:
+            json.dump(self.decompressed_list, list_file)
+
     #------------------------------
     # Extraction
     #------------------------------
 
     @time_it(LOG)
-    def extract_all_files(self, output_dir):
+    def extract_all_files(self, output_dir, decompress = True):
         self.records_map = {}
-        for index, record in enumerate(self.bhd.records):
-            record_files = []
-            for entry in record.entries:
-                file_name = self.extract_file(entry, output_dir)
-                if file_name:
-                    record_files.append(file_name)
-            self.records_map[index] = record_files
-        self._save_records_map(output_dir)
+        self.decompressed_list = []
+        for index_and_record in enumerate(self.bhd.records):
+            self._extract_record(index_and_record, output_dir, decompress)
+        self.save_records_map(output_dir)
+        self.save_decompressed_list(output_dir)
 
-    def _save_records_map(self, output_dir):
-        """ Write the JSON map of records to their entries. """
-        records_map_path = os.path.join(output_dir, "records.json")
-        with open(records_map_path, "w") as records_map_file:
-            json.dump(self.records_map, records_map_file)
+    def _extract_record(self, index_and_record, output_dir, decompress):
+        record_files = []
+
+        index, record = index_and_record
+        for entry in record.entries:
+            rel_path = self.extract_file(entry, output_dir)
+            if not rel_path:
+                continue
+            record_files.append(rel_path)
+
+            if decompress and os.path.splitext(rel_path)[1] == ".dcx":
+                joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
+                file_path = os.path.join(output_dir, joinable_rel_path)
+                success = ExternalArchive._decompress(file_path)
+                if success:
+                    self.decompressed_list.append(rel_path)
+
+        self.records_map[index] = record_files
 
     def extract_file(self, entry, output_dir):
         """ Extract the file corresponding to that BHD data entry, return the
@@ -114,6 +140,15 @@ class ExternalArchive(object):
             if entry in record.entries:
                 return True
         return False
+
+    @staticmethod
+    def _decompress(file_path, remove_dcx = True):
+        dcx = Dcx(file_path)
+        decompressed_path = os.path.splitext(file_path)[0]  # remove the .dcx
+        success = dcx.save_decompressed(decompressed_path)
+        if remove_dcx:
+            os.remove(file_path)
+        return success
 
     #------------------------------
     # Import
