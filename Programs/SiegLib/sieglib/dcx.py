@@ -1,3 +1,4 @@
+import os
 from struct import Struct
 import zlib
 
@@ -16,26 +17,32 @@ class Dcx(object):
     def __init__(self, file_path = None):
         self.magic = self.MAGIC
         self.unk1 = self.CONST_UNK1
-        self.dcs_offset = 0
-        self.dcp_offset = 0
-        self.unk2 = 0
-        self.unk3 = 0
+        self.dcs_offset = self.HEADER_BIN.size
+        self.dcp_offset = self.dcs_offset + DcxSizes.SIZES_BIN.size
+        self.unk2 = self.dcp_offset
+        self.unk3 = self.dcp_offset + 0x8
 
-        self.sizes = None
-        self.parameters = None
-        self.zlib_container = None
+        self.sizes = DcxSizes()
+        self.parameters = DcxParameters()
+        self.zlib_container = DcxZlibContainer()
         self.zlib_data = None
 
         if file_path:
             self.load(file_path)
 
     def load(self, file_path):
-        with open(file_path, "rb") as dcx_file:
-            self._load_header(dcx_file)
-            self._load_sizes(dcx_file)
-            self._load_parameters(dcx_file)
-            self._load_zlib_container(dcx_file)
-            self._load_zlib_data(dcx_file)
+        """ Load a DCX file, return True on success. """
+        try:
+            with open(file_path, "rb") as dcx_file:
+                self._load_header(dcx_file)
+                self._load_sizes(dcx_file)
+                self._load_parameters(dcx_file)
+                self._load_zlib_container(dcx_file)
+                self._load_zlib_data(dcx_file)
+        except OSError as exc:
+            LOG.error("Error reading '{}': {}".format(file_path, exc))
+            return False
+        return True
 
     def _load_header(self, dcx_file):
         dcx_file.seek(0)
@@ -72,6 +79,27 @@ class Dcx(object):
         zlib_data = dcx_file.read(self.sizes.compressed_size)
         self.zlib_data = zlib_data
 
+    def load_decompressed(self, file_path):
+        """ Compress the file content, import its content and update the
+        different sizes variables. """
+        try:
+            with open(file_path, "rb") as file_to_compress:
+                data = file_to_compress.read()
+        except OSError as exc:
+            LOG.error("Error reading '{}': {}".format(file_path, exc))
+            return False
+
+        try:
+            self.zlib_data = zlib.compress(data)
+        except zlib.error as exc:
+            LOG.error("Zlib error: {}".format(exc))
+            return False
+
+        file_size = os.stat(file_path).st_size
+        self.sizes.uncompressed_size = file_size
+        self.sizes.compressed_size = len(self.zlib_data)
+        return True
+
     def save_decompressed(self, output_path):
         """ Save the decompressed content at output_path, return True on
         success and False if an error occured with zlib. """
@@ -81,8 +109,13 @@ class Dcx(object):
             LOG.error("Zlib error: {}".format(exc))
             return False
 
-        with open(output_path, "wb") as output_file:
-            output_file.write(decompressed)
+        try:
+            with open(output_path, "wb") as output_file:
+                output_file.write(decompressed)
+        except OSError as exc:
+            LOG.error("Error writing '{}': {}".format(output_path, exc))
+            return False
+
         return True
 
 
@@ -126,7 +159,7 @@ class DcxParameters(object):
     def __init__(self):
         self.magic = self.MAGIC
         self.method = self.METHOD
-        self.dca_offset = 0
+        self.dca_offset = self.PARAMETERS_BIN.size
         self.unk1 = self.CONST_UNK1
         self.unk2 = 0
         self.unk3 = 0
