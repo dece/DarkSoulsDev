@@ -26,7 +26,9 @@ class ExternalArchive(object):
     """
 
     # Do not handle these files when crafting an archive.
-    SPECIAL_FILE_TYPES = (".json",)
+    SPECIAL_FILE_TYPES     = (".json",)
+    RECORDS_MAP_NAME       = "records.json"
+    DECOMPRESSED_LIST_NAME = "decompressed.json"
 
     # Files without a known name are named by their uppercase hex hash.
     UNNAMED_FILE_RE = re.compile(r"[0-9A-F]{8}")
@@ -54,25 +56,40 @@ class ExternalArchive(object):
     def load_filelist(self, hashmap_path):
         self.filelist = load_filelist(hashmap_path)
 
-    def load_records_map(self, map_path):
+    def load_records_map(self, input_dir):
         """ Load the archive's records map that will be used to generate an
         archive with original record-to-entries map, return True on success. """
+        map_path = os.path.join(input_dir, self.RECORDS_MAP_NAME)
         if not os.path.isfile(map_path):
             LOG.error("Records map file can't be found.")
             return False
-        with open(map_path, "r") as records_map_file:
-            self.records_map = json.load(records_map_file)
-        return True
+        else:
+            with open(map_path, "r") as records_map_file:
+                self.records_map = json.load(records_map_file)
+            return True
+
+    def load_decompressed_list(self, input_dir):
+        """ Load the list of files in that input dir that should be compressed
+        before being imported in the archive. """
+        list_path = os.path.join(input_dir, self.DECOMPRESSED_LIST_NAME)
+        if not os.path.isfile(list_path):
+            LOG.info("No decompressed file list found in the input dir.")
+            return False
+        else:
+            with open(list_path, "r") as list_file:
+                self.decompressed_list = json.load(list_file)
+            LOG.info("Loaded decompressed file list.")
+            return True
 
     def save_records_map(self, output_dir):
         """ Write the JSON map of records to their entries. """
-        records_map_path = os.path.join(output_dir, "records.json")
+        records_map_path = os.path.join(output_dir, self.RECORDS_MAP_NAME)
         with open(records_map_path, "w") as records_map_file:
             json.dump(self.records_map, records_map_file)
 
     def save_decompressed_list(self, output_dir):
         """ Write the JSON list of files (relative path) decompressed. """
-        list_path = os.path.join(output_dir, "decompressed.json")
+        list_path = os.path.join(output_dir, self.DECOMPRESSED_LIST_NAME)
         with open(list_path, "w") as list_file:
             json.dump(self.decompressed_list, list_file)
 
@@ -143,12 +160,21 @@ class ExternalArchive(object):
 
     @staticmethod
     def _decompress(file_path, remove_dcx = True):
-        dcx = Dcx(file_path)
+        """ Decompress that file and remove the compressed original (DCX) if
+        remove_dcx is True. Return True on success. """
+        dcx = Dcx()
+        import_success = dcx.load(file_path)
+        if not import_success:
+            return False
+
         decompressed_path = os.path.splitext(file_path)[0]  # remove the .dcx
-        success = dcx.save_decompressed(decompressed_path)
+        export_success = dcx.save_decompressed(decompressed_path)
+        if not export_success:
+            return False
+
         if remove_dcx:
             os.remove(file_path)
-        return success
+        return True
 
     #------------------------------
     # Import
@@ -159,13 +185,7 @@ class ExternalArchive(object):
         """ Create an external archive from the data in data_dir, return True on
         success. """
         self.reset()
-        self._prepare_bdt_for_import(bhd_path)
-
-        records_map_path = os.path.join(data_dir, "records.json")
-        records_map_is_loaded = self.load_records_map(records_map_path)
-        if not records_map_is_loaded:
-            return False
-        self._prepare_records()
+        self._prepare_import(data_dir, bhd_path)
 
         for root, _, files in os.walk(data_dir):
             for file_name in files:
@@ -178,16 +198,23 @@ class ExternalArchive(object):
         self._save_files(bhd_path)
         return True
 
-    def _prepare_bdt_for_import(self, bhd_path):
-        """ Open the BDT file in write mode and write basic data. """
+    def _prepare_import(self, data_dir, bhd_path):
+        """ Prepare and load some files used in the import process, return True
+        if everything is ready or False if the import should be aborted. """
+        # Open the BDR file in write mode and write basic data
         bdt_path = os.path.splitext(bhd_path)[0] + ".bdt"
         self.bdt.open(bdt_path, "wb")
         self.bdt.make_header()
 
-    def _prepare_records(self):
-        """ Prepare the BHD records list with the correct amount of records. """
+        # Load the records to entries map and prepare the BHD record list.
+        records_map_is_loaded = self.load_records_map(data_dir)
+        if not records_map_is_loaded:
+            return False
         num_records = len(self.records_map.keys())
         self.bhd.records = [BhdRecord() for _ in range(num_records)]
+
+        # Load the list of files to compress
+        self.load_decompressed_list(data_dir)
 
     def import_file(self, data_dir, file_dir, file_name):
         """ Try to import the file file_name in file_dir, with data_dir as the
@@ -208,12 +235,22 @@ class ExternalArchive(object):
             entry_hash = BhdDataEntry.hash_name(rel_path)
         LOG.info("Importing {}".format(rel_path))
 
-        data_entry = BhdDataEntry()
-        data_entry.hash = entry_hash
+        # If the file is in the decompressed list, it doesn't exist on the disk
+        # yet and we have to create the DCX file first.
+        rel_dcx_path = rel_path + ".dcx"
+        if rel_dcx_path in self.decompressed_list:
+            joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
+            decompressed_path = os.path.join(data_dir, joinable_rel_path)
+            success = ExternalArchive._compress(decompressed_path)
+            if not success:
+                return False
 
         import_results = self.bdt.import_file(file_path)
         if import_results[1] == -1:  # written bytes
             return False
+
+        data_entry = BhdDataEntry()
+        data_entry.hash = entry_hash
         data_entry.offset, data_entry.size = import_results
 
         record_is_updated = self._update_record(rel_path, data_entry)
@@ -226,6 +263,20 @@ class ExternalArchive(object):
         # Invert backslashes on Windows.
         relative_path = relative_path.replace(os.path.sep, "/")
         return relative_path
+
+    @staticmethod
+    def _compress(file_path, remove_original = True):
+        dcx = Dcx()
+        import_success = dcx.load_decompressed(file_path)
+        if not import_success:
+            return False
+
+        dcx_path = file_path + ".dcx"
+        export_success = dcx.save(dcx_path)
+
+        if remove_original:
+            os.remove(file_path)
+        return export_success
 
     def _update_record(self, rel_path, data_entry):
         """ Add the data entry to the record associated with that relative path,
