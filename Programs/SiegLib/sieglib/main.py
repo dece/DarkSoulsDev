@@ -18,15 +18,15 @@ def main():
     for index in (0,):
         archive_workspace = os.path.join(WORKSPACE_DIR, "RootFiles", str(index))
 
-        archive = ExternalArchive()
-        archive.load(BHD_PATH.format(index))
-        archive.load_filelist(DVDBND_HASHMAP_PATH.format(index))
-        archive.extract_all_files(archive_workspace)
-
-        # bhd_name = "dvdbnd{}.bhd5".format(index)
-        # archive_bhd_path = os.path.join(WORKSPACE_DIR, bhd_name)
         # archive = ExternalArchive()
-        # archive.import_files(archive_workspace, archive_bhd_path)
+        # archive.load(BHD_PATH.format(index))
+        # archive.load_filelist(DVDBND_HASHMAP_PATH.format(index))
+        # archive.extract_all_files(archive_workspace)
+
+        bhd_name = "dvdbnd{}.bhd5".format(index)
+        archive_bhd_path = os.path.join(WORKSPACE_DIR, bhd_name)
+        archive = ExternalArchive()
+        archive.import_files(archive_workspace, archive_bhd_path)
 
 
 
