@@ -17,7 +17,11 @@ class Bdt(object):
             self.close()
 
     def open(self, file_path, mode = "rb"):
-        self.bdt_file = open(file_path, mode)
+        try:
+            self.bdt_file = open(file_path, mode)
+        except OSError as exc:
+            LOG.error("Error opening {}: {}".format(file_path, exc))
+            return
         self.opened = True
 
     def close(self):

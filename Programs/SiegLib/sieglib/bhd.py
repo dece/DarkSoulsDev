@@ -1,6 +1,7 @@
 from struct import Struct
 
 from pyshgck.bin import read_struct
+from sieglib.log import LOG
 
 
 class Bhd(object):
@@ -11,9 +12,14 @@ class Bhd(object):
         self.records = []
 
     def load(self, file_path):
-        with open(file_path, "rb") as header_file:
-            self._load_header(header_file)
-            self._load_records(header_file)
+        try:
+            with open(file_path, "rb") as header_file:
+                self._load_header(header_file)
+                self._load_records(header_file)
+        except OSError as exc:
+            LOG.error("Error reading {}: {}".format(file_path, exc))
+            return False
+        return True
 
     def _load_header(self, header_file):
         self.header = BhdHeader()
@@ -28,11 +34,16 @@ class Bhd(object):
             self.records[index] = record
 
     def save(self, file_path):
-        """ Save the BHD to disk. """
-        with open(file_path, "wb") as header_file:
-            self.header.save(header_file)
-            self._save_records(header_file)
-            self._save_data_entries(header_file)
+        """ Save the BHD to disk, return True on success. """
+        try:
+            with open(file_path, "wb") as header_file:
+                self.header.save(header_file)
+                self._save_records(header_file)
+                self._save_data_entries(header_file)
+        except OSError as exc:
+            LOG.error("Error writing {}: {}".format(file_path, exc))
+            return False
+        return True
 
     def _save_records(self, file_object):
         """ Save each record with an appropriate data offset. """
