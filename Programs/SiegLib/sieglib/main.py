@@ -3,19 +3,16 @@ import os
 
 from sieglib.external_archive import ExternalArchive
 
-DESCRIPTION = "Dark Souls archive formats library"
+DESCRIPTION = """\
+Dark Souls archive formats library
 
-GAME_DIR = r"F:\Jeux\Steam\SteamApps\common\Dark Souls Prepare to Die Edition"
-DATA_DIR = os.path.join(GAME_DIR, "DATA")
-BHD_PATH = os.path.join(DATA_DIR, "dvdbnd{}.bhd5")
+You can use this library to export files from the game's archive to your disk,
+and generate new archives once you modified them.\
+"""
 
 SIEGLIB_DIR         = os.path.dirname(os.path.dirname(__file__))
 FILELISTS_DIR       = os.path.join(SIEGLIB_DIR, "resources")
 DVDBND_HASHMAP_PATH = os.path.join(FILELISTS_DIR, "dvdbnd{}.hashmap.json")
-
-WORKSPACE_DIR = r"F:\Dev\Projets\DarkSoulsDev\Workspace"
-
-ARCHIVES_ROOT_NAME = "RootFiles"
 
 ARGS = [
     {
@@ -38,9 +35,15 @@ ARGS = [
     },
     {
         "command": ("-i",),
-        "params":  { "dest": "input_dir",
+        "params":  { "dest": "archive_tree",
                      "type": str,
                      "help": "import data from that directory tree" }
+    },
+    {
+        "command": ("-I",),
+        "params":  { "dest": "archives_tree",
+                     "type": str,
+                     "help": "generate archives from that exported file tree" }
     },
     {
         "command": ("-o",),
@@ -62,8 +65,10 @@ def main():
         export_archive(args.bhd, args.filelist, args.output)
     elif args.data_dir:
         export_archives(args.data_dir, args.filelist, args.output)
-    elif args.input_dir:
-        import_files(args.input_dir, args.output)
+    elif args.archive_tree:
+        import_files(args.archive_tree, args.output)
+    elif args.dir_tree:
+        pass
 
 def export_archive(bhd_path, filelist_path, output_dir):
     archive = ExternalArchive()
@@ -73,23 +78,23 @@ def export_archive(bhd_path, filelist_path, output_dir):
     archive.export_all_files(output_dir)
 
 def export_archives(data_dir, filelist_path, output_dir):
-    root = os.path.join(output_dir, ARCHIVES_ROOT_NAME)
+    use_default_filelist = filelist_path is None
     for index in [str(i) for i in range(4)]:
-        archive_workspace = os.path.join(root, index)
         bhd_name = "dvdbnd{}.bhd5".format(index)
         bhd_path = os.path.join(data_dir, bhd_name)
-        if not filelist_path:
+        if use_default_filelist:
             filelist_path = DVDBND_HASHMAP_PATH.format(index)
+        archive_workspace = os.path.join(output_dir, index)
         export_archive(bhd_path, filelist_path, archive_workspace)
 
-def import_files(input_dir, output_dir, index = None):
+def import_files(archive_tree, output_dir, index = None):
     if index is None:
         bhd_name = "dvdbnd.bhd5"
     else:
         bhd_name = "dvdbnd{}.bhd5".format(index)
     archive_bhd_path = os.path.join(output_dir, bhd_name)
     archive = ExternalArchive()
-    archive.import_files(input_dir, archive_bhd_path)
+    archive.import_files(archive_tree, archive_bhd_path)
 
 # def reimport_archive(archives_dir, output_dir):
 #     root = os.path.join(output_dir, ARCHIVES_ROOT_NAME)
