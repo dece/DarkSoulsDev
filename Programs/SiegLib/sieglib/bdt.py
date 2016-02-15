@@ -47,7 +47,7 @@ class Bdt(object):
             pad_size = 16 - (end_position % 16)
             self.bdt_file.write(b"\x00" * pad_size)
         except OSError as exc:
-            LOG.error("Error while trying to import {}: {}".format(
+            LOG.error("Error importing {}: {}".format(
                 file_path, exc
             ))
             return position, -1
