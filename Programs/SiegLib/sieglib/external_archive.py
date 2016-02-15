@@ -11,8 +11,8 @@ from pyshgck.time import time_it
 
 
 class ExternalArchive(object):
-    """ Combination of BHD and BDT. Contains methods to extract files to the
-    filesystem and to generate them from a directory tree.
+    """ Combination of BHD and BDT. Contains methods to export files to the
+    filesystem and to generate archives from a directory tree.
 
     An ExternalArchive object is unusable when instantiated; use the function
     'reset' to create an empty one, or the functions 'load' or 'import_files' to
@@ -100,23 +100,23 @@ class ExternalArchive(object):
     #------------------------------
 
     @time_it(LOG)
-    def extract_all_files(self, output_dir, decompress = True):
-        """ Extract all files from the archive to a directory tree in output_dir
+    def export_all_files(self, output_dir, decompress = True):
+        """ Export all files from the archive to a directory tree in output_dir
         and decompress (if decompress is True, which is default) DCX files. """
         self.records_map = {}
         self.decompressed_list = []
         for index_and_record in enumerate(self.bhd.records):
-            self._extract_record(index_and_record, output_dir, decompress)
+            self._export_record(index_and_record, output_dir, decompress)
         self.save_records_map(output_dir)
         self.save_decompressed_list(output_dir)
 
-    def _extract_record(self, index_and_record, output_dir, decompress):
-        """ Extract data entries of that record. """
+    def _export_record(self, index_and_record, output_dir, decompress):
+        """ Export data entries of that record. """
         record_files = []
 
         index, record = index_and_record
         for entry in record.entries:
-            rel_path = self.extract_file(entry, output_dir)
+            rel_path = self.export_file(entry, output_dir)
             if not rel_path:
                 continue
             record_files.append(rel_path)
@@ -132,8 +132,8 @@ class ExternalArchive(object):
 
         self.records_map[index] = record_files
 
-    def extract_file(self, entry, output_dir):
-        """ Extract the file corresponding to that BHD data entry, return the
+    def export_file(self, entry, output_dir):
+        """ Export the file corresponding to that BHD data entry, return the
         relative file path on success, None on failure """
         if not self.is_entry_valid(entry):
             LOG.error("Tried to extract a file not from this archive.")
