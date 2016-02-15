@@ -23,6 +23,8 @@ class ExternalArchive(object):
     - bdt: Bdt object
     - filelist: dict which maps hashes to the original string
     - records_map: dict which maps record indices to the file names they contain
+    - decompressed_list: list of files that have been decompressed during the
+        archive export; it's the decompressed name, i.e. w/o the .dcx extension
     """
 
     # Do not handle these files when crafting an archive.
@@ -99,6 +101,8 @@ class ExternalArchive(object):
 
     @time_it(LOG)
     def extract_all_files(self, output_dir, decompress = True):
+        """ Extract all files from the archive to a directory tree in output_dir
+        and decompress (if decompress is True, which is default) DCX files. """
         self.records_map = {}
         self.decompressed_list = []
         for index_and_record in enumerate(self.bhd.records):
@@ -107,6 +111,7 @@ class ExternalArchive(object):
         self.save_decompressed_list(output_dir)
 
     def _extract_record(self, index_and_record, output_dir, decompress):
+        """ Extract data entries of that record. """
         record_files = []
 
         index, record = index_and_record
@@ -310,6 +315,7 @@ class ExternalArchive(object):
         self.bhd.header.num_records = num_records
 
     def _save_files(self, bhd_path):
+        """ Write both BHD and BDT files to disk. """
         LOG.info("Saving files to disk...")
         self.bhd.save(bhd_path)
         self.bdt.close()
