@@ -121,12 +121,14 @@ class ExternalArchive(object):
                 continue
             record_files.append(rel_path)
 
-            if decompress and os.path.splitext(rel_path)[1] == ".dcx":
-                joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
-                file_path = os.path.join(output_dir, joinable_rel_path)
-                success = ExternalArchive._decompress(file_path)
-                if success:
-                    self.decompressed_list.append(rel_path)
+            if decompress:
+                base_rel_path, extension = os.path.splitext(rel_path)
+                if extension == ".dcx":
+                    joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
+                    file_path = os.path.join(output_dir, joinable_rel_path)
+                    success = ExternalArchive._decompress(file_path)
+                    if success:
+                        self.decompressed_list.append(base_rel_path)
 
         self.records_map[index] = record_files
 
@@ -242,13 +244,14 @@ class ExternalArchive(object):
 
         # If the file is in the decompressed list, it doesn't exist on the disk
         # yet and we have to create the DCX file first.
-        rel_dcx_path = rel_path + ".dcx"
-        if rel_dcx_path in self.decompressed_list:
+        if rel_path in self.decompressed_list:
             joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
             decompressed_path = os.path.join(data_dir, joinable_rel_path)
             success = ExternalArchive._compress(decompressed_path)
             if not success:
                 return False
+            rel_path = rel_path + ".dcx"
+            file_path = file_path + ".dcx"
 
         import_results = self.bdt.import_file(file_path)
         if import_results[1] == -1:  # written bytes
