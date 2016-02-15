@@ -50,10 +50,20 @@ class ExternalArchive(object):
         self.decompressed_list = []
 
     def load(self, bhd_name):
+        """ Load the BHD file and prepare the BDT file for reading, return True
+        on success. """
         self.reset()
-        self.bhd.load(bhd_name)
+
+        bhd_load_success = self.bhd.load(bhd_name)
+        if not bhd_load_success:
+            return False
+
         bdt_name = os.path.splitext(bhd_name)[0] + ".bdt"
         self.bdt.open(bdt_name)
+        if not self.bdt.opened:
+            return False
+
+        return True
 
     def load_filelist(self, hashmap_path):
         self.filelist = load_filelist(hashmap_path)
