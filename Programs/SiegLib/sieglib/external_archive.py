@@ -241,19 +241,17 @@ class ExternalArchive(object):
 
         # Find rel_path: either a hashable name like "/chr/c5352.anibnd.dcx"
         # or directly a hash name like "192E66A4".
-        # Create a data entry hash with an appropriate value at the same time.
         is_unnamed = self.UNNAMED_FILE_RE.match(file_name) is not None
         if is_unnamed:
             rel_path = file_name
-            entry_hash = int(file_name, 16)
         else:
             rel_path = ExternalArchive._get_rel_path(data_dir, file_path)
             rel_path = "/" + rel_path
-            entry_hash = BhdDataEntry.hash_name(rel_path)
         LOG.info("Importing {}".format(rel_path))
 
         # If the file is in the decompressed list, it doesn't exist on the disk
-        # yet and we have to create the DCX file first.
+        # yet and we have to create the DCX file first, and update the paths we
+        # use afterwards.
         if rel_path in self.decompressed_list:
             joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
             decompressed_path = os.path.join(data_dir, joinable_rel_path)
@@ -263,9 +261,18 @@ class ExternalArchive(object):
             rel_path = rel_path + ".dcx"
             file_path = file_path + ".dcx"
 
+        # Import the file
         import_results = self.bdt.import_file(file_path)
         if import_results[1] == -1:  # written bytes
             return False
+
+        # Unnamed files aren't decompressed, so their hash is already available.
+        # Named files can be decompressed, therefore we don't know their
+        # relative path until now.
+        if is_unnamed:
+            entry_hash = int(file_name, 16)
+        else:
+            entry_hash = BhdDataEntry.hash_name(rel_path)
 
         data_entry = BhdDataEntry()
         data_entry.hash = entry_hash
@@ -284,6 +291,7 @@ class ExternalArchive(object):
 
     @staticmethod
     def _compress(file_path, remove_original = True):
+        """ Compress the file in a DCX file and can remove the original. """
         dcx = Dcx()
         import_success = dcx.load_decompressed(file_path)
         if not import_success:
