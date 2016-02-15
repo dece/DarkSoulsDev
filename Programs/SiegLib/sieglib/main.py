@@ -84,8 +84,7 @@ def export_archives(data_dir, filelist_path, output_dir):
 
 def import_files(input_dir, output_dir, index = None):
     if index is None:
-        base_name = os.path.basename(input_dir)
-        bhd_name = base_name + ".bhd5"
+        bhd_name = "dvdbnd.bhd5"
     else:
         bhd_name = "dvdbnd{}.bhd5".format(index)
     archive_bhd_path = os.path.join(output_dir, bhd_name)
