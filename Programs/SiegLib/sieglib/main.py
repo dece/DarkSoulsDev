@@ -67,8 +67,8 @@ def main():
         export_archives(args.data_dir, args.filelist, args.output)
     elif args.archive_tree:
         import_files(args.archive_tree, args.output)
-    elif args.dir_tree:
-        pass
+    elif args.archives_tree:
+        reimport_archives(args.archives_tree, args.output)
 
 def export_archive(bhd_path, filelist_path, output_dir):
     archive = ExternalArchive()
@@ -96,10 +96,10 @@ def import_files(archive_tree, output_dir, index = None):
     archive = ExternalArchive()
     archive.import_files(archive_tree, archive_bhd_path)
 
-# def reimport_archive(archives_dir, output_dir):
-#     root = os.path.join(output_dir, ARCHIVES_ROOT_NAME)
-#     for index in [str(i) for i in range(4)]:
-#         pass
+def reimport_archives(archives_tree, output_dir):
+    for index in [str(i) for i in range(4)]:
+        archive_tree = os.path.join(archives_tree, index)
+        import_files(archive_tree, output_dir, index)
 
 
 if __name__ == "__main__":
