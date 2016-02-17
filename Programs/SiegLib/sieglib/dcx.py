@@ -52,6 +52,10 @@ class Dcx(object):
         self.unk3         = unpacked[5]
         assert self.magic == self.MAGIC
         assert self.unk1 == self.CONST_UNK1
+        assert self.dcs_offset == self.HEADER_BIN.size
+        assert self.dcp_offset == self.dcs_offset + DcxSizes.SIZES_BIN.size
+        assert self.unk2 == self.dcp_offset
+        assert self.unk3 == self.dcp_offset + 0x8
 
     def _load_content(self, dcx_file):
         self.sizes.load(dcx_file, self.dcs_offset)
@@ -163,8 +167,8 @@ class DcxParameters(object):
 
     MAGIC      = 0x44435000
     METHOD     = b"DFLT"
-    CONST_UNK1 = 0x09000000
-    CONST_UNK5 = 0x00010100
+    CONST_UNK1 = 0x09000000  # Compression level?
+    CONST_UNK5 = 0x00010100  # Zlib version?
 
     PARAMETERS_BIN = Struct(">I4s6I")
 
@@ -191,7 +195,11 @@ class DcxParameters(object):
         self.unk5       = unpacked[7]
         assert self.magic == self.MAGIC
         assert self.method == self.METHOD
+        assert self.dca_offset == self.PARAMETERS_BIN.size
         assert self.unk1 == self.CONST_UNK1
+        assert self.unk2 == 0
+        assert self.unk3 == 0
+        assert self.unk4 == 0
         assert self.unk5 == self.CONST_UNK5
 
     def save(self, file_object):
@@ -205,7 +213,7 @@ class DcxParameters(object):
 class DcxZlibContainer(object):
     """ DCA chunk. """
 
-    MAGIC = 0x44434100
+    MAGIC        = 0x44434100
     CONST_OFFSET = 0x8
 
     ZLIB_CONTAINER_BIN = Struct(">2I")

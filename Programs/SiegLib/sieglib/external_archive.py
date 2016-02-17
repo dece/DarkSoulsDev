@@ -22,7 +22,8 @@ class ExternalArchive(object):
     - bhd: Bhd object
     - bdt: Bdt object
     - filelist: dict which maps hashes to the original string
-    - records_map: dict which maps record indices to the file names they contain
+    - records_map: dict which maps record indices to the entry relative path
+        they contain; the hashes are those found in the BHD file
     - decompressed_list: list of files that have been decompressed during the
         archive export; it's the decompressed name, i.e. w/o the .dcx extension
     """
@@ -134,11 +135,7 @@ class ExternalArchive(object):
             if decompress:
                 base_rel_path, extension = os.path.splitext(rel_path)
                 if extension == ".dcx":
-                    joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
-                    file_path = os.path.join(output_dir, joinable_rel_path)
-                    success = ExternalArchive._decompress(file_path)
-                    if success:
-                        self.decompressed_list.append(base_rel_path)
+                    self._try_decompress(rel_path, base_rel_path, output_dir)
 
         self.records_map[index] = record_files
 
@@ -174,6 +171,20 @@ class ExternalArchive(object):
             if entry in record.entries:
                 return True
         return False
+
+    def _try_decompress(self, rel_path, base_rel_path, output_dir):
+        """ Try to decompress the DCX at rel_path to base_rel_path, in the
+        output_dir; fails if a file is already expected at base_rel_path. """
+        if base_rel_path in self.filelist.values():
+            LOG.info("Won't decompress {} because it conflicts with {}".format(
+                rel_path, base_rel_path
+            ))
+            return
+        joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
+        file_path = os.path.join(output_dir, joinable_rel_path)
+        success = ExternalArchive._decompress(file_path)
+        if success:
+            self.decompressed_list.append(base_rel_path)
 
     @staticmethod
     def _decompress(file_path, remove_dcx = True):
@@ -249,9 +260,9 @@ class ExternalArchive(object):
             rel_path = "/" + rel_path
         LOG.info("Importing {}".format(rel_path))
 
-        # If the file is in the decompressed list, it doesn't exist on the disk
-        # yet and we have to create the DCX file first, and update the paths we
-        # use afterwards.
+        # If the file is in the decompressed list, it has to be compressed first
+        # and that means we have to create its DCX file, then we update the
+        # paths we use afterwards.
         if rel_path in self.decompressed_list:
             joinable_rel_path = os.path.normpath(rel_path.lstrip("/"))
             decompressed_path = os.path.join(data_dir, joinable_rel_path)
