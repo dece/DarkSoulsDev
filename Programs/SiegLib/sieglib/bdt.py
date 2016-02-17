@@ -1,3 +1,4 @@
+from pyshgck.bin import pad_file
 from sieglib.log import LOG
 
 
@@ -47,10 +48,7 @@ class Bdt(object):
             num_written = self.bdt_file.write(file_content)
 
             # Pad the BDT file to 16-byte if needed.
-            end_position = position + num_written
-            if end_position % 16 != 0:
-                pad_size = 16 - (end_position % 16)
-                self.bdt_file.write(b"\x00" * pad_size)
+            pad_file(self.bdt_file, 16)
         except OSError as exc:
             LOG.error("Error importing {}: {}".format(
                 file_path, exc
