@@ -102,7 +102,7 @@ class Dcx(object):
             return False
 
         try:
-            self.zlib_data = zlib.compress(data)
+            self.zlib_data = zlib.compress(data, 9)
         except zlib.error as exc:
             LOG.error("Zlib error: {}".format(exc))
             return False
