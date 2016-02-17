@@ -46,10 +46,11 @@ class Bdt(object):
                 file_content = input_file.read()
             num_written = self.bdt_file.write(file_content)
 
-            # Pad the BDT file to 16-byte.
+            # Pad the BDT file to 16-byte if needed.
             end_position = position + num_written
-            pad_size = 16 - (end_position % 16)
-            self.bdt_file.write(b"\x00" * pad_size)
+            if end_position % 16 != 0:
+                pad_size = 16 - (end_position % 16)
+                self.bdt_file.write(b"\x00" * pad_size)
         except OSError as exc:
             LOG.error("Error importing {}: {}".format(
                 file_path, exc
