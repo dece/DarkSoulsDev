@@ -238,7 +238,7 @@ class ExternalArchive(object):
         records_map_is_loaded = self.load_records_map(data_dir)
         if not records_map_is_loaded:
             return False
-        num_records = len(self.records_map.keys())
+        num_records = len(self.records_map)
         self.bhd.records = [BhdRecord() for _ in range(num_records)]
 
         # Load the list of files to compress
