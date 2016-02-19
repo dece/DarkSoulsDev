@@ -1,12 +1,8 @@
 DarkSoulsDev repository
 =======================
 
-Code to go with the [DSdev file format documentation][doc].
+Programs and resources about exploring and modding Dark Souls files.
 
-Not much to see here at the moment.
+Public documentation is available [here][wiki].
 
-
-
-
-
-[doc]: http://shgck.io/docs/darksouls/
+[wiki]: http://darksoulsdev.shgck.io/
