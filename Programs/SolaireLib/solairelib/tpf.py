@@ -1,3 +1,4 @@
+import os
 from struct import Struct
 
 from pyshgck.bin import read_cstring, read_struct
@@ -31,6 +32,19 @@ class Tpf(object):
             entry = TpfDataEntry()
             entry.load(tpf_file)
             self.data_entries[index] = entry
+
+    def extract_textures(self, output_dir, add_extension = True):
+        for entry in self.data_entries:
+            name = entry.name
+            entry_path = os.path.join(output_dir, name)
+            if add_extension:
+                entry_path += ".dds"
+
+            try:
+                with open(entry_path, "wb") as dds_file:
+                    dds_file.write(entry.data)
+            except OSError as exc:
+                LOG.error("Error writing texture {}: {}".format(name, exc))
 
 
 class TpfDataEntry(object):
