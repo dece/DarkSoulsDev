@@ -1,4 +1,4 @@
-from fmodlib.fsb import Fsb4
+from solairelib.sound.fsb import Fsb4
 
 
 def analyse_fsb(fsb_path):
