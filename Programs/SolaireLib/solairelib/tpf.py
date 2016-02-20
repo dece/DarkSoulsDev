@@ -7,9 +7,9 @@ from solairelib.log import LOG
 
 class Tpf(object):
 
-    MAGIC = b"TPF\x00"
+    MAGIC = 0x00465054
 
-    HEADER_BIN = Struct("<4sIII")
+    HEADER_BIN = Struct("<4I")
 
     def __init__(self):
         self.data_entries = []

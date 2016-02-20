@@ -12,6 +12,7 @@ class Bhd(object):
         self.records = []
 
     def load(self, file_path):
+        """ Load the archive at file_path, return True on success. """
         try:
             with open(file_path, "rb") as header_file:
                 self._load_header(header_file)
