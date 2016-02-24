@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from sieglib.config import RESOURCES_DIR
 from sieglib.external_archive import ExternalArchive
 
 DESCRIPTION = """
@@ -9,9 +10,7 @@ from the game's archive to your disk, and generate new archives once you
 modified them.
 """
 
-SIEGLIB_DIR         = os.path.dirname(os.path.dirname(__file__))
-FILELISTS_DIR       = os.path.join(SIEGLIB_DIR, "resources")
-DVDBND_HASHMAP_PATH = os.path.join(FILELISTS_DIR, "dvdbnd{}.hashmap.json")
+DVDBND_HASHMAP_PATH = os.path.join(RESOURCES_DIR, "dvdbnd{}.hashmap.json")
 
 ARGS = [
     {
