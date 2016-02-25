@@ -1,4 +1,5 @@
 from enum import IntEnum
+import os
 from struct import Struct
 
 from pyshgck.bin import read_cstring, read_struct, pad_data
@@ -48,6 +49,9 @@ class Bnd(object):
         BndFlags.TYPE3
     ]
 
+    # This is the root of all entries absolute paths found in the game.
+    VIRTUAL_ROOT = "N:\\FRPG\\data"
+
     HEADER_BIN = Struct("<12sIII II")
 
     def __init__(self):
@@ -76,8 +80,12 @@ class Bnd(object):
         self.flags         = unpacked[1]
         self.num_entries   = unpacked[2]
         self.data_position = unpacked[3]
-        assert self.magic in self.FULL_MAGICS
-        assert self.flags in self.KNOWN_FLAGS
+        if self.magic not in self.KNOWN_MAGICS:
+            magic_str = self.magic.decode("ascii", errors = "ignore")
+            magic_str = magic_str.rstrip("\x00")
+            LOG.debug("Unknown magic {}".format(magic_str))
+        if self.flags not in self.KNOWN_FLAGS:
+            LOG.debug("Unknown flags {}".format(hex(self.flags)))
 
         if self.flags & BndFlags.HAS_24B_ENTRIES:
             self.entry_bin = BndEntry.ENTRY_24B_BIN
@@ -91,6 +99,13 @@ class Bnd(object):
             entry.load(bnd_file)
             self.entries[index] = entry
 
+    def extract_all_files(self, output_dir):
+        for entry in self.entries:
+            relative_path = entry.get_joinable_path()
+            LOG.info("Extracting {}".format(relative_path))
+            entry_path = os.path.join(output_dir, relative_path)
+            entry.extract_file(entry_path)
+
 
 class BndEntry(object):
 
@@ -99,8 +114,8 @@ class BndEntry(object):
     ENTRY_20B_BIN = Struct("<5I")
     ENTRY_24B_BIN = Struct("<6I")
 
-    def __init__(self, entry_bin = BndEntry.ENTRY_20B_BIN):
-        self.bin = entry_bin
+    def __init__(self, entry_bin = None):
+        self.bin = entry_bin or BndEntry.ENTRY_20B_BIN
 
         self.unk1 = 0
         self.data_size = 0
@@ -113,6 +128,7 @@ class BndEntry(object):
         self.data = b""
 
     def load(self, bnd_file):
+        """ Load the BND entry, decode its path and load its data. """
         unpacked = read_struct(bnd_file, self.bin)
         self.unk1          = unpacked[0]
         self.data_size     = unpacked[1]
@@ -131,9 +147,34 @@ class BndEntry(object):
         bnd_file.seek(self.path_position)
         encoded_path = read_cstring(bnd_file)
         self.decoded_path = encoded_path.decode("shift_jis")
-        assert self.decoded_path.startswith("N:")
 
         bnd_file.seek(self.data_position)
         self.data = bnd_file.read(self.data_size)
 
         bnd_file.seek(current_position)
+
+    def get_joinable_path(self):
+        """ Get a relative, joinable path for this entry. If the path is
+        absolute, it removes the virtual root from the path. """
+        if self._has_absolute_path():
+            relative_path = self.decoded_path[ len(Bnd.VIRTUAL_ROOT) : ]
+        else:
+            relative_path = self.decoded_path
+        relative_path = os.path.normpath(relative_path)
+        relative_path = relative_path.lstrip(os.path.sep)
+        return relative_path
+
+    def _has_absolute_path(self):
+        return self.decoded_path.startswith(Bnd.VIRTUAL_ROOT)
+
+    def extract_file(self, output_path):
+        """ Write entry data at output_path, return True on success. """
+        try:
+            if not os.path.isdir(os.path.dirname(output_path)):
+                os.makedirs(os.path.dirname(output_path))
+            with open(output_path, "wb") as output_file:
+                output_file.write(self.data)
+        except OSError as exc:
+            LOG.error("Error writing {}: {}".format(output_path, exc))
+            return False
+        return True
