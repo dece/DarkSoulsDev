@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from sieglib.bnd import Bnd
 from sieglib.config import RESOURCES_DIR
 from sieglib.external_archive import ExternalArchive
 
@@ -26,7 +27,7 @@ ARGS = [
                      "help": "export data from all archives in that directory" }
     },
     {
-        "command": ("-l",),
+        "command": ("--filelist",),
         "params":  { "dest": "filelist",
                      "type": str,
                      "help": "specify BHD filelists (-E has default files)" }
@@ -44,11 +45,23 @@ ARGS = [
                      "help": "generate archives from that exported file tree" }
     },
     {
+        "command": ("--extract-bnd",),
+        "params": { "dest": "bnd",
+                    "type": str,
+                    "help": "extract files from this BND" }
+    },
+    {
+        "command": ("--generate-bnd",),
+        "params": { "dest": "bnd_dir",
+                    "type": str,
+                    "help": "generate a BND from the file in that dir" }
+    },
+    {
         "command": ("-o",),
         "params":  { "dest": "output",
                      "type": str,
                      "required": True,
-                     "help": "output directory" }
+                     "help": "output file or directory" }
     }
 ]
 
@@ -67,12 +80,17 @@ def main():
         import_files(args.archive_tree, args.output)
     elif args.archives_tree:
         reimport_archives(args.archives_tree, args.output)
+    elif args.bnd:
+        extract_bnd(args.bnd, args.output)
 
 def export_archive(bhd_path, output_dir, filelist_path):
     """ Export the archive located at bhd_path in the directory output_dir.
     A filelist can be provided as filelist_path. """
     archive = ExternalArchive()
-    archive.load(bhd_path)
+    load_success = archive.load(bhd_path)
+    if not load_success:
+        return
+
     if filelist_path:
         archive.load_filelist(filelist_path)
     archive.export_all_files(output_dir)
@@ -107,6 +125,14 @@ def reimport_archives(archives_tree, output_dir):
     for index in [str(i) for i in range(4)]:
         archive_tree = os.path.join(archives_tree, index)
         import_files(archive_tree, output_dir, index)
+
+def extract_bnd(bnd_path, output_dir):
+    bnd = Bnd()
+    load_success = bnd.load(bnd_path)
+    if not load_success:
+        return
+
+    bnd.extract_all_files(output_dir)
 
 
 if __name__ == "__main__":
