@@ -109,7 +109,7 @@ class Bnd(object):
 
 class BndEntry(object):
 
-    DEFAULT_UNK2 = 0
+    CONST_UNK1 = 0x40
 
     ENTRY_20B_BIN = Struct("<5I")
     ENTRY_24B_BIN = Struct("<6I")
@@ -117,12 +117,12 @@ class BndEntry(object):
     def __init__(self, entry_bin = None):
         self.bin = entry_bin or BndEntry.ENTRY_20B_BIN
 
-        self.unk1 = 0
+        self.unk1 = self.CONST_UNK1
         self.data_size = 0
         self.data_position = 0
         self.ident = 0
         self.path_position = 0
-        self.unk2 = self.DEFAULT_UNK2
+        self.unk2 = 0
 
         self.decoded_path = ""
         self.data = b""
@@ -138,7 +138,10 @@ class BndEntry(object):
         if len(unpacked) > 5:
             self.unk2 = unpacked[5]
         else:
-            self.unk2 = self.DEFAULT_UNK2
+            self.unk2 = self.data_size
+        assert self.unk1 == self.CONST_UNK1
+        assert self.unk2 == self.data_size
+        
         self._load_name_and_data(bnd_file)
 
     def _load_name_and_data(self, bnd_file):

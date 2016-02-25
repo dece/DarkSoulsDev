@@ -90,7 +90,6 @@ def export_archive(bhd_path, output_dir, filelist_path):
     load_success = archive.load(bhd_path)
     if not load_success:
         return
-
     if filelist_path:
         archive.load_filelist(filelist_path)
     archive.export_all_files(output_dir)
@@ -131,7 +130,6 @@ def extract_bnd(bnd_path, output_dir):
     load_success = bnd.load(bnd_path)
     if not load_success:
         return
-
     bnd.extract_all_files(output_dir)
 
 
