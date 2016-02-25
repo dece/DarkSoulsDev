@@ -5,7 +5,6 @@ import re
 from sieglib.bdt import Bdt
 from sieglib.bhd import Bhd, BhdHeader, BhdRecord, BhdDataEntry
 from sieglib.dcx import Dcx
-from sieglib.filelist import load_filelist
 from sieglib.log import LOG
 from pyshgck.time import time_it
 
@@ -67,7 +66,9 @@ class ExternalArchive(object):
         return True
 
     def load_filelist(self, hashmap_path):
-        self.filelist = load_filelist(hashmap_path)
+        with open(hashmap_path, "r") as hashmap_file:
+            hashmap = json.load(hashmap_file)
+        self.filelist = { int(k, 16): hashmap[k] for k in hashmap.keys() }
 
     def load_records_map(self, input_dir):
         """ Load the archive's records map that will be used to generate an
