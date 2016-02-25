@@ -25,12 +25,23 @@ class BndFlags(IntEnum):
 class Bnd(object):
     """ Manage BND standalone archives. """
 
-    MAGIC       = 0x33444E42  # BND3
-    FULL_MAGICS = [
-        pad_data(b"BND307C15R17", 12),
-        pad_data(b"BND307D7R6",   12),
-        pad_data(b"BND307M13L29", 12)
-    ]
+    MAGIC        = 0x33444E42  # BND3
+
+    # Known magics and flags. No assertions should be made about these, I just
+    # collected them to try to find some meaning.
+    KNOWN_MAGICS = [ pad_data(magic, 12) for magic in [
+        b"BND307C15R17",
+        b"BND307D7R6",
+        b"BND307F31W13",
+        b"BND307J12L31",
+        b"BND307K31N36",
+        b"BND307M13L29",
+        b"BND308C1N50",
+        b"BND308J17V46",
+        b"BND309G17X51",
+        b"BND310B20L16",
+        b"BND310I2N48"
+    ] ]
     KNOWN_FLAGS = [
         BndFlags.TYPE1,
         BndFlags.TYPE2,
