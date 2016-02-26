@@ -1,4 +1,5 @@
 from enum import IntEnum
+import json
 import os
 from struct import Struct
 
@@ -81,7 +82,7 @@ class Bnd(object):
         self.num_entries   = unpacked[2]
         self.data_position = unpacked[3]
         if self.magic not in self.KNOWN_MAGICS:
-            magic_str = self.magic.decode("ascii", errors = "ignore")
+            magic_str = self.magic.decode("ascii")
             magic_str = magic_str.rstrip("\x00")
             LOG.debug("Unknown magic {}".format(magic_str))
         if self.flags not in self.KNOWN_FLAGS:
@@ -99,12 +100,25 @@ class Bnd(object):
             entry.load(bnd_file)
             self.entries[index] = entry
 
-    def extract_all_files(self, output_dir):
+    def extract_all_files(self, output_dir, write_infos = True):
         for entry in self.entries:
             relative_path = entry.get_joinable_path()
             LOG.info("Extracting {}".format(relative_path))
             entry_path = os.path.join(output_dir, relative_path)
-            entry.extract_file(entry_path)
+            entry.extract_file(entry_path, write_infos)
+        self._write_infos(output_dir)
+
+    def _write_infos(self, output_dir):
+        infos = {
+            "magic": self.magic.decode("ascii"),
+            "flags": self.flags
+        }
+        json_path = os.path.join(output_dir, "bnd.json")
+        try:
+            with open(json_path, "w") as infos_file:
+                json.dump(infos, infos_file)
+        except OSError as exc:
+            LOG.error("Error writing {}: {}".format(json_path, exc))
 
 
 class BndEntry(object):
@@ -170,14 +184,28 @@ class BndEntry(object):
     def _has_absolute_path(self):
         return self.decoded_path.startswith(Bnd.VIRTUAL_ROOT)
 
-    def extract_file(self, output_path):
+    def extract_file(self, output_path, write_infos = True):
         """ Write entry data at output_path, return True on success. """
         try:
             if not os.path.isdir(os.path.dirname(output_path)):
                 os.makedirs(os.path.dirname(output_path))
             with open(output_path, "wb") as output_file:
                 output_file.write(self.data)
+            if write_infos:
+                self._write_infos(output_path)
         except OSError as exc:
             LOG.error("Error writing {}: {}".format(output_path, exc))
             return False
         return True
+
+    def _write_infos(self, output_path):
+        infos = {
+            "ident": self.ident,
+            "path": self.decoded_path
+        }
+        json_path = output_path + ".json"
+        try:
+            with open(json_path, "w") as infos_file:
+                json.dump(infos, infos_file)
+        except OSError as exc:
+            LOG.error("Error writing {}: {}".format(json_path, exc))
