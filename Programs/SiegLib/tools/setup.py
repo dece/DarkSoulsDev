@@ -19,5 +19,7 @@ setup(
     author_email = "shgck@pistache.land",
     url          = "https://gitlab.com/Shgck/dark-souls-dev",
     options      = { "build_exe": BUILD_EXE_OPTIONS },
-    executables  = [ Executable("dcx_tool/dcx_tool.py", base = BASE) ]
+    executables  = [
+        Executable("dcx_tool.py", base = BASE)
+    ]
 )
