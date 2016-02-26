@@ -36,18 +36,14 @@ class ExternalArchive(object):
     UNNAMED_FILE_RE = re.compile(r"[0-9A-F]{8}")
 
     def __init__(self):
-        self.bhd = None
-        self.bdt = None
-        self.filelist = None
-        self.records_map = None
-        self.decompressed_list = None
-
-    def reset(self):
         self.bhd = Bhd()
         self.bdt = Bdt()
         self.filelist = {}
         self.records_map = {}
         self.decompressed_list = []
+
+    def reset(self):
+        self.__init__()
 
     def load(self, bhd_name):
         """ Load the BHD file and prepare the BDT file for reading, return True

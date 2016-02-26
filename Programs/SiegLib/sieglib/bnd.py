@@ -50,20 +50,25 @@ class Bnd(object):
         BndFlags.TYPE3
     ]
 
+    DEFAULT_MAGIC = KNOWN_MAGICS[0]
+    DEFAULT_FLAGS = BndFlags.TYPE3
+
     # This is the root of all entries absolute paths found in the game.
     VIRTUAL_ROOT = "N:\\FRPG\\data"
 
     HEADER_BIN = Struct("<12sIII II")
 
     def __init__(self):
-        self.magic = b""
-        self.flags = 0
+        self.magic = self.DEFAULT_MAGIC
+        self.flags = self.DEFAULT_FLAGS
         self.num_entries = 0
         self.data_position = 0
 
         self.entry_bin = None
         self.entries = []
 
+    def reset(self):
+        self.__init__()
     def load(self, file_path):
         """ Load the whole BND archive in memory, return True on success. """
         try:
