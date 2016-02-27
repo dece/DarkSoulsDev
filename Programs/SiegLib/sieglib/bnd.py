@@ -1,9 +1,10 @@
 from enum import IntEnum
+import io
 import json
 import os
 from struct import Struct
 
-from pyshgck.bin import read_cstring, read_struct, pad_data
+from pyshgck.bin import read_cstring, read_struct, pad_file, pad_data
 from sieglib.log import LOG
 
 
@@ -66,7 +67,7 @@ class Bnd(object):
         self.num_entries = 0
         self.data_position = 0
 
-        self.entry_bin = None
+        self.entry_bin = BndEntry.ENTRY_24B_BIN
         self.entries = []
 
     def reset(self):
@@ -91,23 +92,25 @@ class Bnd(object):
         self.num_entries   = unpacked[2]
         self.data_position = unpacked[3]
         if self.magic not in self.KNOWN_MAGICS:
-            magic_str = self.magic.decode("ascii")
-            magic_str = magic_str.rstrip("\x00")
-            LOG.debug("Unknown magic {}".format(magic_str))
+            LOG.debug("Unknown magic {}".format(self.magic.decode("ascii")))
         if self.flags not in self.KNOWN_FLAGS:
             LOG.debug("Unknown flags {}".format(hex(self.flags)))
-
-        if self.flags & BndFlags.HAS_24B_ENTRIES:
-            self.entry_bin = BndEntry.ENTRY_24B_BIN
-        else:
-            self.entry_bin = BndEntry.ENTRY_20B_BIN
+        self._set_entry_bin()
 
     def _load_entries(self, bnd_file):
         self.entries = [None] * self.num_entries
         for index in range(self.num_entries):
-            entry = BndEntry(self.entry_bin)
-            entry.load(bnd_file)
+            entry = BndEntry()
+            entry.load(self.flags, bnd_file)
             self.entries[index] = entry
+
+    def _set_entry_bin(self):
+        """ Set entry_bin to the correct struct to use. Call this when flags
+        have been updated. """
+        if self.flags & BndFlags.HAS_24B_ENTRIES:
+            self.entry_bin = BndEntry.ENTRY_24B_BIN
+        else:
+            self.entry_bin = BndEntry.ENTRY_20B_BIN
 
     def extract_all_files(self, output_dir, write_infos = True):
         """ Extract all files contained in this archive in output_dir.
@@ -137,7 +140,8 @@ class Bnd(object):
             LOG.error("Error writing {}: {}".format(json_path, exc))
 
     def import_files(self, data_dir):
-        """ Import files contained in data_dir into this BND archive.
+        """ Import files contained in data_dir, create an entry for each file
+        and update num_entries.
 
         If the BND infos file or individual files info files are found, they are
         used to load the necessary information and rebuild a similar BND file.
@@ -161,17 +165,85 @@ class Bnd(object):
 
                 file_path = os.path.join(root, file_name)
                 entry = BndEntry()
-                entry.import_file(file_path)
+                import_success = entry.import_file(file_path)
+                if import_success:
+                    self.entries.append(entry)
+
+        self.entries.sort(key = lambda entry: entry.ident)
+        self.num_entries = len(self.entries)
 
     def _load_infos(self, bnd_info_path):
         try:
             with open(bnd_info_path, "r") as infos_file:
                 infos = json.load(infos_file)
+            self.magic = infos["magic"].encode("ascii")
+            self.flags = infos["flags"]
         except OSError as exc:
             LOG.error("Error reading {}: {}".format(bnd_info_path, exc))
-            return
-        self.magic = infos["magic"]
-        self.flags = infos["flags"]
+        self._set_entry_bin()
+
+    def save(self, output_path):
+        """ Save the BND file at output_path, return True on success. """
+        strings_block, files_block = self._generate_data()
+        try:
+            with open(output_path, "wb") as bnd_file:
+                self._save_header(bnd_file)
+                self._save_entries(bnd_file)
+                bnd_file.write(strings_block)
+                bnd_file.write(files_block)
+        except OSError as exc:
+            LOG.error("Error writing {}: {}".format(output_path, exc))
+            return False
+
+    def _save_header(self, bnd_file):
+        data = self.HEADER_BIN.pack(
+            self.magic, self.flags, self.num_entries, self.data_position, 0, 0
+        )
+        bnd_file.write(data)
+
+    def _save_entries(self, bnd_file):
+        for entry in self.entries:
+            entry.save(self.flags, bnd_file)
+
+    def _generate_data(self):
+        entries_position = self.HEADER_BIN.size
+        entry_size = self.entry_bin.size
+        strings_position = entries_position + self.num_entries * entry_size
+        strings_block = self._generate_strings_block(strings_position)
+
+        # data_position is not padded, so update it before padding.
+        self.data_position = strings_position + len(strings_block)
+        strings_block = pad_data(strings_block, 16)
+
+        files_position = strings_position + len(strings_block)
+        files_block = self._generate_files_block(files_position)
+
+        return strings_block, files_block
+
+    def _generate_strings_block(self, strings_position):
+        """ Generate the strings block and update entries with the correct path
+        position. """
+        data = b""
+        position = strings_position
+        for entry in self.entries:
+            entry.path_position = position
+            encoded_path = entry.decoded_path.encode("shift_jis") + b"\x00"
+            data += encoded_path
+            position += len(encoded_path)
+        return data
+
+    def _generate_files_block(self, files_position):
+        """ Generate the files block and update entries with the correct data
+        position. """
+        # Using an IO because we repeatedly pad the bytes.
+        data_io = io.BytesIO()
+        position = files_position
+        for entry in self.entries:
+            entry.data_position = position
+            data_io.write(entry.data)
+            pad_file(data_io, 16)
+            position = files_position + data_io.tell()
+        return data_io.getvalue()
 
 
 class BndEntry(object):
@@ -181,7 +253,7 @@ class BndEntry(object):
     ENTRY_20B_BIN = Struct("<5I")
     ENTRY_24B_BIN = Struct("<6I")
 
-    def __init__(self, entry_bin = None):
+    def __init__(self):
         self.unk1 = self.CONST_UNK1
         self.data_size = 0
         self.data_position = 0
@@ -189,22 +261,37 @@ class BndEntry(object):
         self.path_position = 0
         self.unk2 = 0
 
-        self.bin = entry_bin or BndEntry.ENTRY_24B_BIN
         self.has_absolute_path = False
         self.decoded_path = ""
         self.data = b""
 
     def reset(self):
-        self.__init__(BndEntry.ENTRY_24B_BIN)
+        self.__init__()
 
     def set_has_absolute_path(self):
         """ Set the has_absolute_path variable. Should be called after
         decoded_path has been changed. """
         self.has_absolute_path = self.decoded_path.startswith(Bnd.VIRTUAL_ROOT)
 
-    def load(self, bnd_file):
+    def get_joinable_path(self):
+        """ Get a relative, joinable path for this entry. If the path is
+        absolute, it removes the virtual root from the path. """
+        if self.has_absolute_path:
+            relative_path = self.decoded_path[ len(Bnd.VIRTUAL_ROOT) : ]
+        else:
+            relative_path = self.decoded_path
+        relative_path = os.path.normpath(relative_path)
+        relative_path = relative_path.lstrip(os.path.sep)
+        return relative_path
+
+    def load(self, bnd_flags, bnd_file):
         """ Load the BND entry, decode its path and load its data. """
-        unpacked = read_struct(bnd_file, self.bin)
+        if bnd_flags & BndFlags.HAS_24B_ENTRIES:
+            entry_struct = self.ENTRY_24B_BIN
+        else:
+            entry_struct = self.ENTRY_20B_BIN
+
+        unpacked = read_struct(bnd_file, entry_struct)
         self.unk1          = unpacked[0]
         self.data_size     = unpacked[1]
         self.data_position = unpacked[2]
@@ -231,17 +318,6 @@ class BndEntry(object):
         self.data = bnd_file.read(self.data_size)
 
         bnd_file.seek(current_position)
-
-    def get_joinable_path(self):
-        """ Get a relative, joinable path for this entry. If the path is
-        absolute, it removes the virtual root from the path. """
-        if self.has_absolute_path:
-            relative_path = self.decoded_path[ len(Bnd.VIRTUAL_ROOT) : ]
-        else:
-            relative_path = self.decoded_path
-        relative_path = os.path.normpath(relative_path)
-        relative_path = relative_path.lstrip(os.path.sep)
-        return relative_path
 
     def extract_file(self, output_path, write_infos = True):
         """ Write entry data at output_path, return True on success. """
@@ -302,3 +378,16 @@ class BndEntry(object):
         self.ident = infos["ident"]
         self.decoded_path = infos["path"]
         self.set_has_absolute_path()
+
+    def save(self, bnd_flags, bnd_file):
+        if bnd_flags & BndFlags.HAS_24B_ENTRIES:
+            data = self.ENTRY_24B_BIN.pack(
+                self.unk1, self.data_size, self.data_position, self.ident,
+                self.path_position, self.unk2
+            )
+        else:
+            data = self.ENTRY_20B_BIN.pack(
+                self.unk1, self.data_size, self.data_position, self.ident,
+                self.path_position
+            )
+        bnd_file.write(data)

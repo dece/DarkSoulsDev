@@ -82,6 +82,8 @@ def main():
         reimport_archives(args.archives_tree, args.output)
     elif args.bnd:
         extract_bnd(args.bnd, args.output)
+    elif args.bnd_dir:
+        generate_bnd(args.bnd_dir, args.output)
 
 def export_archive(bhd_path, output_dir, filelist_path):
     """ Export the archive located at bhd_path in the directory output_dir.
@@ -126,11 +128,18 @@ def reimport_archives(archives_tree, output_dir):
         import_files(archive_tree, output_dir, index)
 
 def extract_bnd(bnd_path, output_dir):
+    """ Extract files from a BND to output_dir. """
     bnd = Bnd()
     load_success = bnd.load(bnd_path)
     if not load_success:
         return
     bnd.extract_all_files(output_dir)
+
+def generate_bnd(bnd_dir, output_path):
+    """ Build a BND from the files in bnd_dir; BND is saved at output_path. """
+    bnd = Bnd()
+    bnd.import_files(bnd_dir)
+    bnd.save(output_path)
 
 
 if __name__ == "__main__":
