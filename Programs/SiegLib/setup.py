@@ -8,7 +8,7 @@ BUILD_EXE_OPTIONS = {
 
 setup(
     name         = "SiegLib",
-    version      = "0.2",
+    version      = "0.3",
     description  = "Small standalone utilities to use SiegLib functions",
     author       = "Shgck",
     author_email = "shgck@pistache.land",

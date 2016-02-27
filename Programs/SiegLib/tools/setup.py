@@ -13,13 +13,13 @@ BASE = "Win32GUI" if sys.platform == "win32" else None
 
 setup(
     name         = "SiegLib tools",
-    version      = "0.1",
     description  = "Small standalone utilities to use SiegLib functions",
     author       = "Shgck",
     author_email = "shgck@pistache.land",
     url          = "https://gitlab.com/Shgck/dark-souls-dev",
     options      = { "build_exe": BUILD_EXE_OPTIONS },
     executables  = [
+        Executable("bnd_tool.py", base = BASE),
         Executable("dcx_tool.py", base = BASE)
     ]
 )

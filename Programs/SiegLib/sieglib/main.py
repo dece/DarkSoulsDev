@@ -107,7 +107,7 @@ def export_archives(data_dir, output_dir, filelist_path = None):
         if use_default_filelist:
             filelist_path = DVDBND_HASHMAP_PATH.format(index)
         archive_workspace = os.path.join(output_dir, index)
-        export_archive(bhd_path, filelist_path, archive_workspace)
+        export_archive(bhd_path, archive_workspace, filelist_path)
 
 def import_files(archive_tree, output_dir, index = None):
     """ Import the data located in archive_tree in an external archive that will
