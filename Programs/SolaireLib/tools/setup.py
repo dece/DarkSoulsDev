@@ -13,7 +13,6 @@ BASE = "Win32GUI" if sys.platform == "win32" else None
 
 setup(
     name         = "SolaireLib tools",
-    version      = "0.1",
     description  = "Small standalone utilities to use SolaireLib modules",
     author       = "Shgck",
     author_email = "shgck@pistache.land",
