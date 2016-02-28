@@ -24,7 +24,6 @@ class Tpf(object):
         return True
 
     def _load_entries(self, tpf_file):
-        tpf_file.seek(0)
         unpacked = read_struct(tpf_file, self.HEADER_BIN)
         num_entries = unpacked[2]
         self.data_entries = [None] * num_entries
