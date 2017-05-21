@@ -19,6 +19,8 @@ setup(
     url          = "https://gitlab.com/Shgck/dark-souls-dev",
     options      = { "build_exe": BUILD_EXE_OPTIONS },
     executables  = [
-        Executable("tpf_tool.py", base = BASE)
+        Executable( "tpf_tool.py", base = BASE ),
+        Executable( "param_editor/main.py", targetName = "param_editor.exe",
+                    base = BASE )
     ]
 )
